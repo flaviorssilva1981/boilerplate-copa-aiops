@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default("Erro") }} - My Agent App{% endblock %}
+
+{% block content %}
+<div class="empty-state">
+    <h2 style="margin-bottom: 1rem; font-size: 2rem;">{{ status_code | default("Erro") }}</h2>
+    <p>{{ message | default("Ocorreu um erro inesperado.") }}</p>
+    <a href="/" class="btn btn-primary" style="margin-top: 2rem;">Voltar para tasks</a>
+</div>
+{% endblock %}

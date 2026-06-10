@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: aiops
+      POSTGRES_PASSWORD: aiops123
+      POSTGRES_DB: aiops_k8s
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aiops
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - aiops
+
+  mcp-kubernetes:
+    image: mcp/kubernetes:latest
+    volumes:
+      - /home/fabricioveronez/.kube:/home/appuser/.kube
+    environment:
+      ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT: 1
+      PORT: 3001
+      HOST: "0.0.0.0"
+    ports:
+      - "3001:3001"
+    networks:
+      - aiops
+
+volumes:
+  postgres_data:
+
+networks:
+  aiops:
