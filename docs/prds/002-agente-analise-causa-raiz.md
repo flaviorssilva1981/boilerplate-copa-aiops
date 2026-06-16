@@ -2,7 +2,7 @@
 prd_number: "002"
 status: rascunho
 priority: alta
-created: 2026-03-22
+created: 2026-06-16
 issue:
 depends_on: ["001"]
 references: ["003", "004"]
@@ -70,7 +70,7 @@ Como SRE, quero que um agente de IA investigue automaticamente a causa raiz dos 
 
 **Rules:**
 - O agente e construido com LangChain + Claude Sonnet em loop de tool-calling (estilo ReAct), via `create_agent` de `langchain.agents`
-- O modelo e configuravel via variavel de ambiente `AGENT_MODEL_NAME` (padrao: `claude-sonnet-4-6`)
+- O modelo e configuravel via variavel de ambiente `AGENT_MODEL_NAME` (padrao: `claude-haiku-4-5`)
 - O agente se conecta ao cluster via MCP Server Kubernetes (Flux159), utilizando `langchain-mcp-adapters` para converter tools MCP em tools LangChain; o servidor e executado localmente via `npx` expondo transport HTTP (streamable), e o agente conecta por HTTP (`streamable_http`) em `MCP_SERVER_URL` (padrao `http://localhost:3001/mcp`)
 - Apenas as tools de leitura `kubectl_get`, `kubectl_describe` e `kubectl_logs` sao vinculadas ao agente — a lista retornada pelo `langchain-mcp-adapters` e filtrada por nome antes da criacao do agente; tools de escrita (`kubectl_apply`, `kubectl_patch`, `kubectl_delete`, etc.) nao sao expostas
 - A investigacao segue o ciclo: analise → acao → reflexao → proxima acao
@@ -271,7 +271,7 @@ Como SRE, quero que cada investigacao produza um relatorio Markdown estruturado 
 **Funcionalidades:** US02, US03
 
 - [ ] Implementar `EventHandler` do PRD 001 como ponto de entrada do pipeline de analise (US02)
-- [ ] Configurar LangChain com Claude Sonnet (`AGENT_MODEL_NAME`, padrao `claude-sonnet-4-6`) em loop de tool-calling via `create_agent` de `langchain.agents` (US02)
+- [ ] Configurar LangChain com Claude Sonnet (`AGENT_MODEL_NAME`, padrao `claude-haiku-4-5`) em loop de tool-calling via `create_agent` de `langchain.agents` (US02)
 - [ ] Configurar MCP Server Kubernetes (Flux159) via `langchain-mcp-adapters` (MCP executado via npx com transport HTTP/streamable, conexao `streamable_http` em `MCP_SERVER_URL`), filtrando apenas as tools de leitura kubectl_get, kubectl_describe e kubectl_logs (US02)
 - [ ] Implementar logica de investigacao iterativa com limite de iteracoes configuravel via `AGENT_MAX_ITERATIONS`, usando `ModelCallLimitMiddleware` (US02)
 - [ ] Gerar relatorios Markdown por problema seguindo a estrutura do prompt, com mapeamento de event_uids pelo campo **Eventos** (US03)
@@ -318,33 +318,3 @@ Como SRE, quero que cada investigacao produza um relatorio Markdown estruturado 
 - [langchain-mcp-adapters](https://github.com/langchain-ai/langchain-mcp-adapters) — pacote de integracao LangChain + MCP
 
 ## 9. Registro de Decisoes
-
-- **2026-06-13:** Consumo assincrono do PRD 001: o `EventHandler` roda fire-and-forget e falhas de infraestrutura (banco na dedup, MCP indisponivel, API do Claude esgotada, PostgreSQL na persistencia) NAO propagam ao coletor — reverte as decisoes de 2026-06-10 de propagacao ao coletor. A deduplicacao por UID e o unico guardiao de correcao; eventos one-shot que falham antes de gerar relatorio sao perdidos (risco aceito na v1, alinhado ao PRD 001).
-- **2026-06-13:** Relatorio EM_ANALISE criado insert-first (antes da chamada ao agente); sem trava de concorrencia (insert atomico/constraint) na v1. Motivo: com intervalo de coleta de ~3 min e ciclos serializados, a gravacao antecipada do EM_ANALISE ja fecha a janela de despacho duplicado; trava atomica fica como endurecimento futuro.
-- **2026-06-13:** `exit_behavior="end"` esclarecido: ao atingir o limite o run encerra sem chamada extra ao modelo — nao ha relatorio parcial garantido; a classificacao INCOMPLETO vem do caminho de resposta vazia/sem secoes (US03). Alinha a redacao com o PRD 004.
-- **2026-06-13:** Piso de `langchain-mcp-adapters` elevado para >=0.3.0. Motivo: o prompt do agente depende de erro de tool retornar ao modelo como tool message; versoes anteriores lancam `ToolException` e quebrariam o loop de investigacao. Fonte: docs LangChain (MCP loading tools).
-- **2026-06-13:** FALHA_CORRECAO deixa de ser estado terminal — passa a admitir a transicao FALHA_CORRECAO → CORRIGINDO (nova tentativa de correcao, PRD 004). Motivo: sempre deve ser possivel re-acionar a correcao (decisao do usuario em revisao de 2026-06-13). As regras de deduplicacao (US01) NAO mudam: FALHA_CORRECAO e CORRIGINDO continuam ignorados na dedup — a recuperacao acontece via re-fix (botao do PRD 003), nao via reanalise.
-- **2026-06-10:** Um relatorio por problema agrupado, em vez de um por batch. Motivo: status e correcao (PRD 004) operam por relatorio; com batch unico, correcao parcial marcaria o conjunto inteiro como FALHA_CORRECAO e eventos de problemas ja corrigidos ficariam presos (decisao do usuario em revisao de 2026-06-10). O relatorio EM_ANALISE do batch e substituido pelos relatorios por problema ao final; o prompt passa a exigir o campo **Eventos** com os uids por problema.
-- **2026-06-10:** Removido o fallback de arquivo local na falha definitiva de persistencia. Motivo: filesystem de pod e efemero e o arquivo nao teria consumidor; o conteudo vai para o log e os eventos sao reanalisados via marca d'agua + timeout de estagnacao (decisao do usuario em revisao de 2026-06-10).
-- **2026-06-10:** Timeout de estagnacao para EM_ANALISE (`ANALYSIS_STALE_TIMEOUT_MINUTES`, padrao 30 minutos) aplicado na consulta de deduplicacao. Motivo: complementa a recuperacao do startup — sem ele, falha definitiva de persistencia deixaria o relatorio preso em EM_ANALISE ate um restart.
-- **2026-06-10:** Eventos vinculados a relatorios INCOMPLETO passam a ser reanalisados (antes eram ignorados). Motivo: analise nao concluida deve ser reavaliada — um incidente precisa ser resolvido (decisao do usuario em revisao de 2026-06-10). Custo de reanalise recorrente aceito como risco.
-- **2026-06-10:** Todo caminho de aborto da analise (MCP indisponivel, API do Claude com retries esgotados) atualiza o relatorio para INCOMPLETO; relatorios EM_ANALISE orfaos sao marcados como INCOMPLETO no startup. Motivo: relatorio preso em EM_ANALISE bloquearia os UIDs para sempre na deduplicacao.
-- **2026-06-10:** Falha na consulta de deduplicacao propaga erro ao coletor (PRD 001), que nao avanca a marca d'agua. Motivo: eventos brutos nao sao persistidos; sem segurar a marca d'agua, eventos one-shot seriam perdidos em falhas transitorias. *(Substituida em 2026-06-13 — ver acima: despacho assincrono fire-and-forget nao propaga ao coletor; perda de one-shot aceita.)*
-- **2026-06-10:** Apenas as tools de leitura kubectl_get, kubectl_describe e kubectl_logs sao vinculadas ao agente, filtrando a lista do `langchain-mcp-adapters`. Motivo: o MCP Server expoe ~23 tools incluindo escrita (kubectl_apply/patch/delete); instrucao de prompt nao e garantia, e o modo `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS` do servidor mantem apply/patch habilitados.
-- **2026-06-10:** Limite de iteracoes implementado via `ModelCallLimitMiddleware(run_limit, exit_behavior="end")`. Motivo: `create_agent` nao possui parametro de max iterations; `recursion_limit` lancaria `GraphRecursionError` sem permitir o relatorio parcial exigido pelo edge case de limite atingido.
-- **2026-06-10:** Retry de erros da API do Claude via `max_retries=3` do `ChatAnthropic`, sem implementacao propria. Motivo: o SDK da Anthropic ja aplica backoff exponencial para 429/5xx.
-- **2026-06-10:** Modelo definido como `claude-sonnet-4-6` (alias sem sufixo de data), configuravel via `AGENT_MODEL_NAME`. Motivo: a decisao de 2026-03-13 fixava a familia Sonnet; a implementacao exige o ID exato.
-- **2026-06-13:** MCP Server executado localmente via `npx` expondo transport HTTP (streamable); o agente conecta por HTTP (`streamable_http`) em `MCP_SERVER_URL` (padrao `http://localhost:3001/mcp`), nao por stdio. Node.js/npx mantido como dependencia de runtime. Motivo: o `langchain-mcp-adapters` conecta ao MCP por HTTP, alinhado ao modelo de execucao local (Docker provisiona apenas o banco).
-- **2026-06-10:** Terminologia ajustada de "padrao ReAct" para "loop de tool-calling (estilo ReAct)". Motivo: `create_agent` implementa tool-calling nativo da API, nao o ReAct textual classico; preserva a intencao da decisao de 2026-03-13.
-- **2026-03-22:** Filtragem de reprocessamento fica neste PRD, nao na coleta (PRD 001). Motivo: a decisao depende do estado dos relatorios, que e responsabilidade deste modulo.
-- **2026-06-10:** Campo `id` da tabela de relatorios definido como `UUID` e timestamps nomeados como `created_at` e `updated_at`. Motivo: PRD 003 expoe o `id` em URL (`GET /reports/{id}`) — UUID e mais seguro para exposicao publica; nomes de campos estabelecidos para eliminar ambiguidade entre PRDs.
-- **2026-03-22:** Deduplicacao por `metadata.uid` do evento Kubernetes. Motivo: evitar relatorios duplicados e desperdicio de tokens de API. Limitacao aceita: EventAggregator do K8s pode gerar UIDs diferentes para o mesmo problema logico.
-- **2026-03-22:** Eventos vinculados a relatorios CORRIGIDO sao reanalisados. Motivo: problema pode ter reincidido apos correcao.
-- **2026-03-22:** Status EM_ANALISE adicionado ao fluxo. Motivo: evitar race condition onde ciclos subsequentes de coleta disparam analise duplicada para eventos ja em investigacao.
-- **2026-03-22:** `event_uids` armazenado como `TEXT[]` com GIN index no PostgreSQL. Motivo: consulta de deduplicacao via `ANY()` e a operacao mais frequente; array nativo com GIN e a opcao mais performatica.
-- **2026-03-22:** Limite de iteracoes do agente configuravel via `AGENT_MAX_ITERATIONS` (padrao: 25). Motivo: balancear profundidade da investigacao com custo de API e tempo de resposta.
-- **2026-03-22:** Prompt do agente documentado no PRD. Motivo: o prompt determina a qualidade da analise e deve ser rastreavel como decisao tecnica.
-- **2026-03-22:** `create_agent` de `langchain.agents` escolhido como API de criacao do agente. Motivo: API atual e recomendada do LangChain, substituindo `create_react_agent` depreciado no LangGraph v1.0.
-- **2026-03-22:** Integracao MCP via `langchain-mcp-adapters`. Motivo: pacote oficial do langchain-ai para converter tools MCP em tools LangChain. Nao ha integracao MCP nativa no core do LangChain.
-- **2026-03-13:** Claude Sonnet escolhido como LLM. Motivo: equilibrio entre capacidade de raciocinio e custo.
-- **2026-03-13:** Padrao ReAct para investigacao. Motivo: permite iteracao ate encontrar causa raiz real.

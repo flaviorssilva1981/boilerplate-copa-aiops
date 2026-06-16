@@ -2,7 +2,7 @@
 prd_number: "001"
 status: rascunho
 priority: alta
-created: 2026-03-22
+created: 2026-06-16
 issue:
 depends_on: []
 references: ["002"]
@@ -161,27 +161,3 @@ O contrato usa nomes próprios, desacoplados do SDK. Mapeamento a partir da API 
 - [Python Kubernetes Client](https://github.com/kubernetes-client/python) — SDK utilizado para coleta de eventos
 - [PRD 002 - Agente de Análise](./002-agente-analise-causa-raiz.md) — consome os eventos coletados por este PRD
 ## 8. Registro de Decisões
-
-- **2026-03-22:** Python SDK escolhido para coleta ao invés de MCP. Motivo: coleta é operação simples; MCP é reservado para agentes de IA.
-- **2026-03-22:** Filtragem de reprocessamento fica no PRD 002, não na coleta. Motivo: a decisão de quais eventos já foram tratados depende do estado dos relatórios, que é responsabilidade do agente de análise.
-- **2026-03-22:** Loop interno na aplicação FastAPI. Motivo: simplicidade, sem necessidade de job externo.
-- **2026-03-22:** Intervalo padrão definido em 3 minutos (variável `EVENT_COLLECTION_INTERVAL_MINUTES`).
-- **2026-03-22:** Usar campo `eventTime` da API `events.k8s.io/v1` para filtro temporal, com fallback para `deprecatedLastTimestamp` quando `eventTime` for nulo (controllers legados). Eventos sem nenhum timestamp são descartados. *(Substituída em 2026-06-10 — ver abaixo.)*
-- **2026-03-22:** Sem limite de eventos por ciclo de coleta. Todos são coletados e entregues.
-- **2026-03-22:** Erro de RBAC não interrompe o loop; registra no output e tenta novamente no próximo ciclo.
-- **2026-03-22:** Classe `EventHandler` criada com implementação placeholder (print no output). Processamento real será implementado no PRD 002.
-- **2026-03-22:** Paginação não será implementada neste momento.
-- **2026-03-22:** Removido tipo "Error" do escopo — não existe como tipo de evento na API Kubernetes. Apenas Warning é coletado (todos os eventos problemáticos como CrashLoopBackOff, OOMKilled, etc. já são do tipo Warning).
-- **2026-03-22:** Definido contrato de saída (dict com campos uid, type, reason, message, namespace, involved_object, timestamp) para desacoplar o handler do SDK Kubernetes.
-- **2026-03-22:** Variável de ambiente renomeada de `INTERVAL` para `EVENT_COLLECTION_INTERVAL_MINUTES` para evitar colisão e explicitar a unidade.
-- **2026-06-10:** Filtro temporal passa a usar a precedência `series.lastObservedTime` → `eventTime` → `deprecatedLastTimestamp` (substitui a decisão de 2026-03-22). Motivo: `eventTime` registra apenas a primeira observação do evento; recorrências via EventSeries atualizam só `series.lastObservedTime` — sem a precedência, problemas contínuos (ex: FailedScheduling) deixariam de ser coletados após a primeira janela.
-- **2026-06-10:** Janela de coleta definida por marca d'água (timestamp da última coleta bem-sucedida), não por intervalo fixo. Motivo: ciclos com falha não avançam a marca d'água, evitando perda silenciosa de eventos ocorridos durante a indisponibilidade. *(Substituída em 2026-06-13 — ver abaixo: marca d'água vira otimização de janela e avança na coleta.)*
-- **2026-06-10:** Autenticação via `config.load_incluster_config()` com fallback para `config.load_kube_config()`. Motivo: padrão documentado do SDK; cobre execução dentro e fora do cluster.
-- **2026-06-10:** Chamadas do SDK executadas via `asyncio.to_thread`. Motivo: o SDK `kubernetes` é síncrono e bloquearia o event loop do FastAPI se chamado diretamente na task assíncrona.
-- **2026-06-10:** Mapeamento de campos da API `events.k8s.io/v1` documentado no contrato (`note` → `message`, `regarding` → `involved_object`); `involved_object.namespace` pode ser string vazia para recursos cluster-scoped (ex: Node).
-- **2026-06-10:** Removida a entrada de 2026-03-22 que dava o PRD como concluído — nenhum PRD foi implementado (confirmado pelo usuário em revisão de 2026-06-10). Status permanece `rascunho`.
-- **2026-06-10:** A marca d'água só avança quando o `EventHandler` processa o batch sem erro (refina a decisão de marca d'água acima). Motivo: eventos brutos não são persistidos; se a análise (PRD 002) falhar com a marca d'água avançada, eventos one-shot seriam perdidos silenciosamente. Decisão do usuário na revisão do PRD 002 (2026-06-10): um incidente precisa ser resolvido. *(Substituída em 2026-06-13 — ver abaixo: despacho assíncrono fire-and-forget desacopla a marca d'água do resultado do handler.)*
-- **2026-06-13:** Despacho assíncrono fire-and-forget: o coletor despacha os eventos ao `EventHandler` sem aguardar a resposta do agente e segue para o próximo ciclo. Motivo: decisão do usuário — o gerenciamento e o envio dos eventos devem ser assíncronos, independentes da resposta do agente.
-- **2026-06-13:** A marca d'água passa a ser otimização de janela de coleta e avança a cada coleta bem-sucedida, desacoplada do resultado do `EventHandler`. A deduplicação por UID (PRD 002) é o único guardião de correção contra reprocessamento. Substitui as duas decisões de marca-d'água-por-hold de 2026-06-10.
-- **2026-06-13:** Perda de evento one-shot em falha pré-relatório aceita na v1 (ex: banco fora na dedup). Motivo: sem hold de marca d'água e sem persistência de eventos brutos, o evento não recorrente que falha antes de gerar relatório não é recuperável; recuperação só via recorrência + recovery de startup/stale do PRD 002.
-- **2026-06-13:** Janela inicial na primeira execução = intervalo configurado (resolve a premissa que estava em aberto nas notas de implementação).
