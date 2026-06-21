@@ -3,87 +3,630 @@
 {% block title %}Health — Kubernetes AIOps{% endblock %}
 
 {% block extra_style %}
-.health-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem;
-    margin-top: 1.5rem;
+/* ── Dashboard Layout ───────────────────────────────── */
+.dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
-.health-card {
+.dash-header h2 { font-size: 1.3rem; font-weight: 700; }
+.dash-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: #475569;
+}
+.refresh-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.refresh-btn:hover { background: #334155; color: #e2e8f0; }
+
+.section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #475569;
+    margin: 1.5rem 0 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.live-dot {
+    width: 6px; height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+/* ── Status Cards ───────────────────────────────────── */
+.status-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+}
+@media (max-width: 700px) { .status-cards { grid-template-columns: repeat(2, 1fr); } }
+.status-card {
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 8px;
-    padding: 1.25rem 1.5rem;
+    padding: 1rem 1.25rem;
 }
-.health-card h3 {
-    font-size: 0.8rem;
-    font-weight: 600;
+.status-card .sc-label {
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    margin-bottom: 0.6rem;
+    letter-spacing: 0.06em;
+    color: #475569;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
 }
-.health-card .value {
-    font-size: 1.1rem;
+.status-card .sc-val {
+    font-size: 0.9rem;
     font-weight: 600;
     color: #e2e8f0;
     word-break: break-all;
 }
-.health-card .value.ok { color: #4ade80; }
-.health-card .value.warn { color: #fbbf24; }
-.health-card .value.err { color: #f87171; }
-.stat-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.82rem;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid #1e293b;
-    color: #94a3b8;
+.sc-val.ok { color: #4ade80; }
+.sc-val.err { color: #f87171; }
+.sc-val.warn { color: #fbbf24; }
+
+/* ── Cluster Ring Charts ────────────────────────────── */
+.cluster-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
 }
-.stat-row:last-child { border-bottom: none; }
-.stat-row span:last-child { font-weight: 600; color: #e2e8f0; }
+@media (max-width: 600px) { .cluster-cards { grid-template-columns: 1fr; } }
+.ring-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 1.5rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+}
+.ring-wrap {
+    position: relative;
+    width: 150px;
+    height: 150px;
+}
+.ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.ring-pct {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    line-height: 1;
+}
+.ring-sub {
+    font-size: 0.65rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+    text-align: center;
+}
+.ring-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+}
+
+/* ── Progress bar ───────────────────────────────────── */
+.pbar-wrap {
+    background: #0f172a;
+    border-radius: 4px;
+    height: 5px;
+    width: 72px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 6px;
+    overflow: hidden;
+}
+.pbar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+/* ── Nodes Table ────────────────────────────────────── */
+.nodes-wrap {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 0.75rem;
+}
+.nodes-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.nodes-table th {
+    text-align: left;
+    padding: 0.5rem 1rem;
+    color: #475569;
+    background: #0f172a;
+    font-weight: 600;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.nodes-table td {
+    padding: 0.5rem 1rem;
+    color: #94a3b8;
+    border-top: 1px solid #0f172a;
+}
+.nodes-table td:first-child { color: #e2e8f0; font-family: monospace; font-size: 0.78rem; }
+
+/* ── Reports Section ────────────────────────────────── */
+.reports-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+@media (max-width: 600px) { .reports-grid { grid-template-columns: 1fr; } }
+.reports-chart-wrap {
+    position: relative;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+.reports-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    top: 1.25rem;
+}
+.reports-total-num { font-size: 1.6rem; font-weight: 700; color: #e2e8f0; line-height: 1; }
+.reports-total-lbl { font-size: 0.65rem; color: #64748b; }
+.reports-list {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.report-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.5rem;
+    border-bottom: 1px solid #0f172a;
+    font-size: 0.82rem;
+}
+.report-row:last-child { border-bottom: none; }
+.status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 7px;
+    flex-shrink: 0;
+}
+.report-row-left { display: flex; align-items: center; color: #94a3b8; }
+.report-row-right { display: flex; align-items: center; gap: 0.75rem; }
+.report-count { font-weight: 700; color: #e2e8f0; font-size: 0.9rem; min-width: 1.5rem; text-align: right; }
+.report-pct { font-size: 0.72rem; color: #475569; min-width: 2.5rem; text-align: right; }
+
+/* ── Skeleton / loading ─────────────────────────────── */
+.skel {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+    display: inline-block;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── Cluster error banner ───────────────────────────── */
+.cluster-err {
+    display: none;
+    background: #1c0a0a;
+    border: 1px solid #7f1d1d;
+    border-radius: 6px;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    color: #fca5a5;
+    margin-top: 0.5rem;
+}
 {% endblock %}
 
 {% block content %}
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
-    <h2 style="font-size:1.3rem;font-weight:700;">System Health</h2>
-    <span style="font-size:0.75rem;color:#475569;">{{ now }}</span>
-</div>
-
-<div class="health-grid">
-    <div class="health-card">
-        <h3>API Status</h3>
-        <div class="value ok">● Online</div>
-    </div>
-
-    <div class="health-card">
-        <h3>Database</h3>
-        <div class="value {{ 'ok' if db_ok else 'err' }}">{{ '● Connected' if db_ok else '✗ Unreachable' }}</div>
-    </div>
-
-    <div class="health-card">
-        <h3>LLM Model</h3>
-        <div class="value">{{ model }}</div>
-    </div>
-
-    <div class="health-card">
-        <h3>MCP Server</h3>
-        <div class="value" style="font-size:0.85rem;word-break:break-all;">{{ mcp_url }}</div>
+<!-- ── Header ───────────────────────────────────────── -->
+<div class="dash-header">
+    <h2>System Health</h2>
+    <div class="dash-header-right">
+        <span>Updated: <span id="last-update">{{ now }}</span></span>
+        <button class="refresh-btn" onclick="refreshCluster()">⟳ Refresh</button>
     </div>
 </div>
 
+<!-- ── Status Cards ──────────────────────────────────── -->
+<div class="section-label">Services</div>
+<div class="status-cards">
+    <div class="status-card">
+        <div class="sc-label">API Status</div>
+        <div class="sc-val ok">● Online</div>
+    </div>
+    <div class="status-card">
+        <div class="sc-label">Database</div>
+        <div class="sc-val {{ 'ok' if db_ok else 'err' }}">{{ '● Connected' if db_ok else '✗ Unreachable' }}</div>
+    </div>
+    <div class="status-card">
+        <div class="sc-label">LLM Model</div>
+        <div class="sc-val" style="font-size:0.78rem;">{{ model }}</div>
+    </div>
+    <div class="status-card">
+        <div class="sc-label">MCP Server</div>
+        <div class="sc-val" id="mcp-status"><span class="skel" style="width:4rem;height:0.9rem;">&nbsp;</span></div>
+        <div style="font-size:0.68rem;color:#475569;margin-top:0.3rem;word-break:break-all;">{{ mcp_url }}</div>
+    </div>
+</div>
+
+<!-- ── Cluster Resources ─────────────────────────────── -->
+<div class="section-label">
+    <span class="live-dot"></span>
+    Cluster Resources <span style="color:#334155;font-weight:400;font-style:italic;font-size:0.65rem;text-transform:none;letter-spacing:0;">&nbsp;live · auto-refreshes every 30s</span>
+</div>
+
+<div class="cluster-cards">
+    <!-- CPU -->
+    <div class="ring-card">
+        <div class="ring-title">CPU</div>
+        <div class="ring-wrap">
+            <canvas id="cpu-canvas"></canvas>
+            <div class="ring-center">
+                <div class="ring-pct" id="cpu-pct"><span class="skel" style="width:3rem;height:1.4rem;">&nbsp;</span></div>
+                <div class="ring-sub" id="cpu-sub">—</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memory -->
+    <div class="ring-card">
+        <div class="ring-title">Memory</div>
+        <div class="ring-wrap">
+            <canvas id="mem-canvas"></canvas>
+            <div class="ring-center">
+                <div class="ring-pct" id="mem-pct"><span class="skel" style="width:3rem;height:1.4rem;">&nbsp;</span></div>
+                <div class="ring-sub" id="mem-sub">—</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pods -->
+    <div class="ring-card">
+        <div class="ring-title">Pods</div>
+        <div class="ring-wrap">
+            <canvas id="pods-canvas"></canvas>
+            <div class="ring-center">
+                <div class="ring-pct" id="pods-pct"><span class="skel" style="width:3rem;height:1.4rem;">&nbsp;</span></div>
+                <div class="ring-sub" id="pods-sub">—</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="cluster-err" id="cluster-err"></div>
+
+<!-- Nodes table -->
+<div class="nodes-wrap" id="nodes-wrap" style="display:none;">
+    <table class="nodes-table">
+        <thead>
+            <tr>
+                <th>Node</th>
+                <th>CPU</th>
+                <th>Memory</th>
+            </tr>
+        </thead>
+        <tbody id="nodes-tbody"></tbody>
+    </table>
+</div>
+
+<!-- Pods status breakdown -->
+<div class="nodes-wrap" id="pods-wrap" style="display:none;margin-top:0.5rem;">
+    <table class="nodes-table">
+        <thead>
+            <tr>
+                <th colspan="2" style="color:#64748b;font-size:0.68rem;letter-spacing:0.06em;">Pods across all namespaces</th>
+            </tr>
+            <tr>
+                <th>Status</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody id="pods-tbody"></tbody>
+    </table>
+</div>
+
+<!-- ── Reports ───────────────────────────────────────── -->
 {% if db_ok %}
-<div class="health-card" style="margin-top:1rem;">
-    <h3>Reports Summary</h3>
-    {% for row in report_stats %}
-    <div class="stat-row">
-        <span>{{ row.status }}</span>
-        <span>{{ row.count }}</span>
+<div class="section-label">Reports Summary</div>
+<div class="reports-grid">
+    <div class="reports-chart-wrap">
+        <div class="ring-title" style="align-self:flex-start;">By Status</div>
+        <div style="position:relative;width:150px;height:150px;">
+            <canvas id="reports-canvas"></canvas>
+            <div class="reports-center">
+                <div class="reports-total-num">{{ total_reports }}</div>
+                <div class="reports-total-lbl">reports</div>
+            </div>
+        </div>
     </div>
-    {% endfor %}
-    {% if not report_stats %}
-    <div style="color:#64748b;font-size:0.85rem;">No reports yet.</div>
-    {% endif %}
+
+    <div class="reports-list">
+        {% set status_colors = {
+            'COMPLETE': '#38bdf8',
+            'FIXED': '#4ade80',
+            'ANALYZING': '#fbbf24',
+            'FIX_FAILED': '#f87171',
+            'FIXING': '#a78bfa',
+            'INCOMPLETE': '#94a3b8'
+        } %}
+        {% for row in report_stats %}
+        <div class="report-row">
+            <div class="report-row-left">
+                <span class="status-dot" style="background:{{ status_colors.get(row.status, '#64748b') }};"></span>
+                {{ row.status }}
+            </div>
+            <div class="report-row-right">
+                <span class="report-count">{{ row.count }}</span>
+                {% if total_reports > 0 %}
+                <span class="report-pct">{{ "%.0f"|format(row.count / total_reports * 100) }}%</span>
+                {% endif %}
+                <span class="pbar-wrap">
+                    <span class="pbar-fill" style="width:{{ (row.count / total_reports * 100)|int if total_reports > 0 else 0 }}%;background:{{ status_colors.get(row.status, '#64748b') }};"></span>
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+        {% if not report_stats %}
+        <div style="color:#64748b;font-size:0.85rem;padding:0.5rem;">No reports yet.</div>
+        {% endif %}
+    </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    /* ── Colour palette ─────────────────────── */
+    const C_BG   = '#0f172a';
+    const C_CPU  = '#38bdf8';
+    const C_MEM  = '#a78bfa';
+    const C_PODS = '#4ade80';
+    const STATUS_COLORS = {
+        COMPLETE:  '#38bdf8',
+        FIXED:     '#4ade80',
+        ANALYZING: '#fbbf24',
+        FIX_FAILED:'#f87171',
+        FIXING:    '#a78bfa',
+        INCOMPLETE:'#94a3b8',
+    };
+
+    /* ── Ring chart factory ─────────────────── */
+    function makeRing(canvasId, pct, color) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return null;
+        const v = pct ?? 0;
+        return new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [v, 100 - v],
+                    backgroundColor: [color, C_BG],
+                    borderWidth: 0,
+                    hoverOffset: 0,
+                }]
+            },
+            options: {
+                cutout: '84%',
+                responsive: true,
+                maintainAspectRatio: true,
+                animation: { duration: 700 },
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            }
+        });
+    }
+
+    function updateRing(chart, pct) {
+        if (!chart) return;
+        const v = pct ?? 0;
+        chart.data.datasets[0].data = [v, 100 - v];
+        chart.update('active');
+    }
+
+    /* ── Reports doughnut ───────────────────── */
+    const reportStats = {{ report_stats | tojson }};
+
+    (function initReports() {
+        const ctx = document.getElementById('reports-canvas');
+        if (!ctx || !reportStats.length) return;
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: reportStats.map(r => r.status),
+                datasets: [{
+                    data: reportStats.map(r => r.count),
+                    backgroundColor: reportStats.map(r => STATUS_COLORS[r.status] || '#64748b'),
+                    borderWidth: 0,
+                    hoverOffset: 4,
+                }]
+            },
+            options: {
+                cutout: '78%',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw}` } },
+                },
+            }
+        });
+    })();
+
+    /* ── Cluster metrics ────────────────────── */
+    let cpuChart = null, memChart = null, podsChart = null;
+
+    function setText(id, val, fallback) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = (val !== null && val !== undefined) ? String(val) : fallback;
+    }
+
+    function buildNodeRow(n) {
+        const cpuBar = `<span class="pbar-wrap"><span class="pbar-fill" style="width:${Math.min(n.cpu_pct,100)}%;background:${C_CPU};"></span></span>`;
+        const memBar = `<span class="pbar-wrap"><span class="pbar-fill" style="width:${Math.min(n.mem_pct,100)}%;background:${C_MEM};"></span></span>`;
+        return `<tr>
+            <td>${n.name}</td>
+            <td>${cpuBar}${n.cpu} &nbsp;<span style="color:#475569;font-size:0.75rem;">${n.cpu_pct}%</span></td>
+            <td>${memBar}${n.mem} &nbsp;<span style="color:#475569;font-size:0.75rem;">${n.mem_pct}%</span></td>
+        </tr>`;
+    }
+
+    const PHASE_COLORS = {
+        Running:    '#4ade80',   // green  — healthy
+        Succeeded:  '#38bdf8',   // blue   — completed OK (Jobs/CronJobs)
+        Pending:    '#fbbf24',   // amber  — waiting
+        Failed:     '#f87171',   // red    — error
+        Unknown:    '#94a3b8',   // gray   — unreachable node
+    };
+
+    function buildPhaseRow(phase, count, total) {
+        const pct = total > 0 ? Math.round(count / total * 100) : 0;
+        const color = PHASE_COLORS[phase] || '#64748b';
+        return `<tr>
+            <td><span class="status-dot" style="background:${color};"></span>${phase}</td>
+            <td style="color:#e2e8f0;font-weight:600;">${count} <span style="color:#475569;font-weight:400;font-size:0.75rem;">(${pct}%)</span></td>
+        </tr>`;
+    }
+
+    async function loadCluster() {
+        try {
+            const resp = await fetch('/api/health/cluster');
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const d = await resp.json();
+
+            /* MCP status badge */
+            const mcpEl = document.getElementById('mcp-status');
+            if (mcpEl) {
+                if (d.error) {
+                    mcpEl.innerHTML = '<span class="sc-val err">✗ Unreachable</span>';
+                } else {
+                    mcpEl.innerHTML = '<span class="sc-val ok">● Connected</span>';
+                }
+            }
+
+            /* Cluster error banner */
+            const errEl = document.getElementById('cluster-err');
+            if (d.error) {
+                errEl.style.display = 'block';
+                errEl.textContent = '⚠ Could not load cluster metrics: ' + d.error;
+            } else {
+                errEl.style.display = 'none';
+            }
+
+            /* CPU ring */
+            if (!cpuChart) cpuChart = makeRing('cpu-canvas', d.cpu_pct, C_CPU);
+            else updateRing(cpuChart, d.cpu_pct);
+            setText('cpu-pct', d.cpu_pct !== null ? d.cpu_pct + '%' : null, '—');
+            setText('cpu-sub', d.cpu_detail || (d.nodes.length ? d.nodes.length + ' node(s)' : null), '—');
+
+            /* Memory ring */
+            if (!memChart) memChart = makeRing('mem-canvas', d.mem_pct, C_MEM);
+            else updateRing(memChart, d.mem_pct);
+            setText('mem-pct', d.mem_pct !== null ? d.mem_pct + '%' : null, '—');
+            setText('mem-sub', d.mem_detail || null, '—');
+
+            /* Pods ring — running% vs capacity if available, else running/total */
+            const podsCap = d.pods_cap || d.pods_total || 0;
+            const podsPct = podsCap > 0
+                ? Math.round(d.pods_total / podsCap * 100)
+                : null;
+            if (!podsChart) podsChart = makeRing('pods-canvas', podsPct, C_PODS);
+            else updateRing(podsChart, podsPct);
+            setText('pods-pct', podsPct !== null ? podsPct + '%' : null, '—');
+            setText('pods-sub',
+                d.pods_total > 0
+                    ? d.pods_running + ' running / ' + d.pods_total + ' total'
+                    : null,
+                '—');
+
+            /* Nodes table */
+            const tbody = document.getElementById('nodes-tbody');
+            const wrap = document.getElementById('nodes-wrap');
+            if (tbody && d.nodes && d.nodes.length > 0) {
+                tbody.innerHTML = d.nodes.map(buildNodeRow).join('');
+                wrap.style.display = '';
+            }
+
+            /* Pods phase table */
+            const ptbody = document.getElementById('pods-tbody');
+            const pwrap = document.getElementById('pods-wrap');
+            if (ptbody && d.pods_by_phase && Object.keys(d.pods_by_phase).length > 0) {
+                const total = d.pods_total || 0;
+                ptbody.innerHTML = Object.entries(d.pods_by_phase)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([phase, cnt]) => buildPhaseRow(phase, cnt, total))
+                    .join('');
+                pwrap.style.display = '';
+            }
+
+            /* Timestamp */
+            document.getElementById('last-update').textContent =
+                new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (local)';
+
+        } catch (e) {
+            const mcpEl = document.getElementById('mcp-status');
+            if (mcpEl) mcpEl.innerHTML = '<span class="sc-val warn">⚠ Unknown</span>';
+            const errEl = document.getElementById('cluster-err');
+            if (errEl) { errEl.style.display = 'block'; errEl.textContent = '⚠ ' + e.message; }
+        }
+    }
+
+    window.refreshCluster = loadCluster;
+
+    /* Init charts + start polling */
+    cpuChart  = makeRing('cpu-canvas',  0, C_CPU);
+    memChart  = makeRing('mem-canvas',  0, C_MEM);
+    podsChart = makeRing('pods-canvas', 0, C_PODS);
+
+    loadCluster();
+    setInterval(loadCluster, 30000);
+})();
+</script>
 {% endblock %}

@@ -1,4 +1,5 @@
 import asyncio
+import json as _json
 import logging
 import os
 import uuid
@@ -7,7 +8,7 @@ from pathlib import Path
 
 import markdown as md_lib
 from fastapi import APIRouter, BackgroundTasks, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -46,10 +47,11 @@ async def health_page(request: Request):
         "health.html",
         {
             "db_ok": db_ok,
-            "report_stats": report_stats,
+            "report_stats": [{"status": str(r["status"]), "count": r["count"]} for r in report_stats],
+            "total_reports": sum(r["count"] for r in report_stats),
             "model": os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-4-5"),
             "mcp_url": os.environ.get("MCP_SERVER_URL", "http://mcp-server-kubernetes:3001/mcp"),
-            "now": datetime.now(UTC).strftime("%d/%m/%Y %H:%M UTC"),
+            "now": datetime.now(UTC).strftime("%m/%d/%Y %H:%M UTC"),
         },
     )
 
@@ -141,6 +143,91 @@ async def _run_fix_in_background(
             ReportStatus.FALHA_CORRECAO,
             "## Fix Result\n\n**Status:** FAILURE\n\nInternal error while running the fix agent. Check server logs.",
         )
+
+
+@router.get("/reports/{report_id}/fix/stream")
+async def stream_fix_report(request: Request, report_id: uuid.UUID):
+    """Server-Sent Events endpoint: initiates and streams the fix execution in real time."""
+    _sse_headers = {
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+        "Connection": "keep-alive",
+    }
+
+    def _sse(event: dict) -> str:
+        return f"data: {_json.dumps(event)}\n\n"
+
+    try:
+        async with request.app.state.sessionmaker() as session:
+            report = await session.get(Report, report_id)
+    except SQLAlchemyError:
+
+        async def _db_err():
+            yield _sse({"type": "error", "content": "Database unavailable"})
+
+        return StreamingResponse(_db_err(), media_type="text/event-stream", headers=_sse_headers)
+
+    if report is None:
+
+        async def _not_found():
+            yield _sse({"type": "error", "content": f"Report {report_id} not found"})
+
+        return StreamingResponse(_not_found(), media_type="text/event-stream", headers=_sse_headers)
+
+    if report.status not in (ReportStatus.COMPLETO, ReportStatus.FALHA_CORRECAO):
+
+        async def _not_fixable():
+            yield _sse({"type": "error", "content": "Report is not in a fixable state (must be COMPLETE or FIX_FAILED)."})
+
+        return StreamingResponse(_not_fixable(), media_type="text/event-stream", headers=_sse_headers)
+
+    report_markdown = report.markdown or ""
+    sessionmaker = request.app.state.sessionmaker
+
+    async def _generate():
+        from my_agent_app.agents.fix_agent import stream_fix_execution
+
+        async with sessionmaker() as session:
+            obj = await session.get(Report, report_id)
+            if obj:
+                obj.status = ReportStatus.CORRIGINDO
+                obj.updated_at = datetime.now(UTC)
+                await session.commit()
+
+        ai_parts: list[str] = []
+        error_occurred = False
+
+        try:
+            async for event in stream_fix_execution(report_markdown):
+                yield _sse(event)
+                if event["type"] == "ai_token":
+                    ai_parts.append(event.get("content", ""))
+                elif event["type"] == "error":
+                    error_occurred = True
+        except Exception as exc:
+            logger.exception("SSE fix stream failed for report %s", report_id)
+            error_occurred = True
+            yield _sse({"type": "error", "content": str(exc)})
+
+        full_output = "".join(ai_parts)
+        success = not error_occurred and bool(full_output) and "SUCCESS" in full_output.upper()
+        new_status = ReportStatus.CORRIGIDO if success else ReportStatus.FALHA_CORRECAO
+
+        try:
+            async with sessionmaker() as session:
+                obj = await session.get(Report, report_id)
+                if obj:
+                    obj.status = new_status
+                    obj.updated_at = datetime.now(UTC)
+                    if full_output.strip():
+                        obj.markdown = (obj.markdown or "") + "\n\n---\n\n" + full_output
+                    await session.commit()
+        except Exception:
+            logger.exception("Failed to persist fix result for report %s", report_id)
+
+        yield _sse({"type": "status_update", "status": new_status, "success": success})
+
+    return StreamingResponse(_generate(), media_type="text/event-stream", headers=_sse_headers)
 
 
 @router.post("/reports/{report_id}/fix")

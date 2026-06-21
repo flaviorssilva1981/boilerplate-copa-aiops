@@ -1,8 +1,10 @@
 """Fix agent: executes the correction commands from an RCA report via MCP."""
 
 import asyncio
+import json
 import logging
 import os
+from typing import AsyncGenerator
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -120,6 +122,113 @@ def _is_transient(exc: Exception) -> bool:
     name = type(exc).__name__
     msg = str(exc)
     return any(t in name or t in msg for t in _TRANSIENT_ERROR_TYPES)
+
+
+async def stream_fix_execution(report_markdown: str) -> AsyncGenerator[dict, None]:
+    """
+    Async generator that streams fix execution events in real time.
+    Yields dicts: {type, content?, name?, args?, output?, success?}
+    Types: info | tool_start | tool_end | ai_token | done | error
+    """
+    mcp_url = _get_mcp_url()
+    mcp_token = os.environ.get("MCP_AUTH_TOKEN")
+    headers = {"Host": "localhost"}
+    if mcp_token:
+        headers["X-MCP-AUTH"] = mcp_token
+
+    yield {"type": "info", "content": f"Connecting to MCP Server at {mcp_url} …"}
+
+    try:
+        mcp_client = MultiServerMCPClient(
+            connections={
+                "kubernetes": {
+                    "url": mcp_url,
+                    "transport": "streamable_http",
+                    "headers": headers,
+                }
+            }
+        )
+        all_tools = await mcp_client.get_tools()
+    except Exception as exc:
+        yield {"type": "error", "content": f"Failed to connect to MCP Server: {exc}"}
+        return
+
+    fix_tools = [t for t in all_tools if t.name in FIX_TOOLS]
+    if not fix_tools:
+        yield {"type": "error", "content": "No kubectl tools returned by MCP Server."}
+        return
+
+    yield {"type": "info", "content": f"Connected. {len(fix_tools)} tools available: {', '.join(t.name for t in fix_tools)}"}
+
+    llm = get_agent_llm()
+    agent = create_agent(
+        model=llm,
+        tools=fix_tools,
+        system_prompt=SystemMessage(content=FIX_SYSTEM_PROMPT),
+    )
+
+    input_messages = [
+        HumanMessage(
+            content=f"Execute the fixes for the following diagnostics report:\n\n{report_markdown}"
+        )
+    ]
+
+    yield {"type": "info", "content": "Sending report to Fix Agent (LangChain + Claude Sonnet) …"}
+
+    ai_parts: list[str] = []
+
+    try:
+        async for event in agent.astream_events({"messages": input_messages}, version="v2"):
+            kind = event.get("event", "")
+
+            if kind == "on_tool_start":
+                tool_name = event.get("name", "unknown")
+                raw_input = event.get("data", {}).get("input", {})
+                if isinstance(raw_input, dict):
+                    args = "  ".join(
+                        f"{k}={json.dumps(v)}"
+                        for k, v in raw_input.items()
+                        if v is not None and v != ""
+                    )
+                else:
+                    args = str(raw_input)
+                yield {"type": "tool_start", "name": tool_name, "args": args}
+
+            elif kind == "on_tool_end":
+                tool_name = event.get("name", "unknown")
+                raw_output = event.get("data", {}).get("output", "")
+                output_str = (
+                    str(raw_output.content)
+                    if hasattr(raw_output, "content")
+                    else str(raw_output)
+                )
+                if len(output_str) > 3000:
+                    output_str = output_str[:3000] + "\n… (output truncated)"
+                yield {"type": "tool_end", "name": tool_name, "output": output_str}
+
+            elif kind == "on_chat_model_stream":
+                chunk = event.get("data", {}).get("chunk")
+                if chunk:
+                    content = getattr(chunk, "content", "")
+                    if isinstance(content, str) and content:
+                        ai_parts.append(content)
+                        yield {"type": "ai_token", "content": content}
+                    elif isinstance(content, list):
+                        for item in content:
+                            if isinstance(item, dict) and item.get("type") == "text":
+                                text = item.get("text", "")
+                                if text:
+                                    ai_parts.append(text)
+                                    yield {"type": "ai_token", "content": text}
+
+    except Exception as exc:
+        logger.exception("Fix agent streaming failed")
+        yield {"type": "error", "content": str(exc)}
+        return
+
+    full_output = "".join(ai_parts)
+    success = bool(full_output) and "SUCCESS" in full_output.upper()
+    yield {"type": "done", "success": success, "output": full_output}
 
 
 async def run_fix_execution(report_markdown: str, max_retries: int = 3) -> tuple[str, bool]:

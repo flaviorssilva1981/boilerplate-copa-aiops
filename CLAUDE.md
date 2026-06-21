@@ -1,62 +1,95 @@
 # CLAUDE.md
 
-## Sobre o projeto
+## About this project
 
-<!-- TODO: Descreva o proposito do seu agente aqui -->
-Boilerplate para agente inteligente com FastAPI + LangChain + MCP Server.
+Kubernetes AIOps agent — automatically detects, diagnoses, and remediates Kubernetes problems using FastAPI, LangChain (ReAct), Claude Sonnet via Requesty AI, and a live MCP Kubernetes server.
 
-## Comandos
+## Commands
 
 ```bash
-# Instalar dependencias
+# Install dependencies
 uv sync
 
-# Executar aplicacao
+# Run the application locally
 uv run uvicorn my_agent_app.main:app --host 0.0.0.0 --port 8000
 
-# Subir o banco de dados (Docker so provisiona PostgreSQL + pgAdmin)
+# Start the database (Docker provisions PostgreSQL + pgAdmin only)
 docker compose up -d
 
-# Subir o MCP Server Kubernetes localmente via npx (transport HTTP/streamable, porta 3001)
-# Requer Node.js/npx instalado e kubeconfig em ~/.kube/config
+# Start the MCP Kubernetes server locally via npx (HTTP/streamable transport, port 3001)
+# Requires Node.js/npx and a valid kubeconfig at ~/.kube/config
 ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT=1 PORT=3001 npx mcp-server-kubernetes
 
-# Aplicar migrations do banco de dados (apos criar modelos e configurar Alembic)
-# uv run alembic upgrade head
+# Deploy to OKE (set ANTHROPIC_API_KEY first)
+.\deploy\oke-deploy.ps1
 ```
 
-A aplicacao roda localmente via `uv`; o Docker e usado apenas para o banco de dados.
-O MCP Server roda localmente via `npx` expondo transport HTTP, e o LangChain conecta por HTTP (`MCP_SERVER_URL`).
+The application runs locally via `uv`; Docker is only used for the database.
+The MCP Server runs via `npx` exposing HTTP transport; LangChain connects via `MCP_SERVER_URL`.
 
-Nao ha testes ou linter configurados ainda.
+No tests or linter configured yet.
 
-## Arquitetura
+## Architecture
 
-O codigo da aplicacao fica em `src/my_agent_app/` e e empacotado via hatchling (`pyproject.toml`).
+Code lives in `src/my_agent_app/` and is packaged via hatchling (`pyproject.toml`).
 
-- **Database** (`database.py`) — Engine async SQLAlchemy + asyncpg, configurado via `DATABASE_URL`
-- **API** (`api/router.py`) — Health check
-- **Interface Web** (`web/router.py`) — Pagina inicial. Templates Jinja2 em `src/my_agent_app/templates/`
+### AIOps loop (4 steps)
 
-### Modulos placeholder (a implementar)
+1. **Collect** — `collector/collector.py` polls Kubernetes warning events every 3 minutes via the in-cluster API. New events not already covered by a report are grouped and sent to the RCA agent.
+2. **Diagnose** — `agents/rca_agent.py` (LangChain ReAct + Claude Sonnet) investigates events using read-only MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`). Writes a structured Markdown report.
+3. **Persist** — report saved to PostgreSQL (`models/report.py`) with status `ANALYZING → COMPLETE`. Events are deduplicated by UID.
+4. **Remediate** — operator clicks "Execute Fix" in the web UI. `agents/fix_agent.py` reads the report and executes fixes via MCP (`kubectl_apply`, `kubectl_patch`, etc.), streaming each step live to the browser via Server-Sent Events.
 
-- **Agents** (`agents/`) — Agentes LangChain + MCP Server
-- **Collector** (`collector/`) — Loop periodico de coleta de dados
-- **Models** (`models/`) — Modelos SQLAlchemy e queries
+### Modules
 
-## Variaveis de ambiente
+- **`main.py`** — FastAPI app, lifespan (starts collector), Basic Auth middleware
+- **`database.py`** — async SQLAlchemy engine + session factory
+- **`api/router.py`** — `/api/health`, `/api/health/cluster` (live k8s metrics), `/api/agent/ping`
+- **`web/router.py`** — web routes: `/`, `/health`, `/reports`, `/reports/:id`, `GET /reports/:id/fix/stream` (SSE)
+- **`templates/`** — Jinja2 HTML templates (dark theme, Chart.js health dashboard)
+- **`agents/rca_agent.py`** — RCA agent: LangChain + MCP read-only tools, structured Markdown output
+- **`agents/fix_agent.py`** — Fix agent: LangChain + MCP write tools, SSE streaming via `astream_events`
+- **`collector/`** — asyncio background loop + event deduplication
+- **`models/report.py`** — SQLAlchemy `Report` model, `ReportStatus` enum, `title()` / `severity()` helpers
 
-| Variavel | Descricao | Padrao |
-|----------|-----------|--------|
-| `ANTHROPIC_API_KEY` | Chave de API da Anthropic | (obrigatorio) |
-| `DATABASE_URL` | Connection string PostgreSQL async | `postgresql+asyncpg://aiops:aiops123@localhost:5432/aiops_k8s` |
-| `MCP_SERVER_URL` | Endpoint HTTP do MCP Server Kubernetes (via npx) | `http://localhost:3001/mcp` |
+### Health Dashboard
 
-## Infraestrutura (docker-compose)
+`GET /api/health/cluster` calls the Kubernetes API **directly** (using the pod's service account token) — not via MCP:
+- `/apis/metrics.k8s.io/v1beta1/nodes` — live CPU and memory usage
+- `/api/v1/nodes` — allocatable capacity per node
+- `/api/v1/pods` — pod counts by phase
 
-O Docker provisiona **apenas o banco de dados** (PostgreSQL + pgAdmin). A aplicacao e o MCP Server rodam localmente.
+RBAC ClusterRole `aiops-dashboard-reader` grants the `aiops-app` service account read access to these resources.
 
-| Servico | Porta | Credenciais |
-|---------|-------|-------------|
+## Environment variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Requesty AI key (Anthropic-compatible) | (required) |
+| `ANTHROPIC_BASE_URL` | LLM proxy base URL | `https://router.requesty.ai` |
+| `AGENT_MODEL_NAME` | Claude model slug | `anthropic/claude-sonnet-4-5` |
+| `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://aiops:aiops123@localhost:5432/aiops_k8s` |
+| `MCP_SERVER_URL` | HTTP endpoint of the MCP Kubernetes server | `http://localhost:3001/mcp` |
+| `MCP_AUTH_TOKEN` | Optional bearer token for MCP auth | (none) |
+| `BASIC_AUTH_USER` | Web UI username | `admin` |
+| `BASIC_AUTH_PASSWORD` | Web UI password | (required) |
+
+## Infrastructure (docker-compose — local only)
+
+Docker provisions **only the database**. The app and MCP server run locally.
+
+| Service | Port | Credentials |
+|---------|------|-------------|
 | PostgreSQL 17 | 5432 | aiops / aiops123 / aiops_k8s |
 | pgAdmin | 5050 | admin@admin.com / admin123 |
+
+## Kubernetes manifests (k8s/aiops/)
+
+| Manifest | Creates |
+|----------|---------|
+| `namespace.yaml` | `aiops` namespace |
+| `rbac.yaml` | ServiceAccounts, ClusterRoles, ClusterRoleBindings |
+| `postgres.yaml` | PostgreSQL 17 StatefulSet |
+| `mcp-server.yaml` | `npx mcp-server-kubernetes` Deployment |
+| `app.yaml` | FastAPI Deployment (source from ConfigMap) |
+| `ingress.yaml` | NGINX Ingress with TLS |
