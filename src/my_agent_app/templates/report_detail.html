@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Report {{ report.id }} — Kubernetes AIOps{% endblock %}
+
+{% block extra_style %}
+.report-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.report-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #94a3b8;
+    font-family: monospace;
+    flex: 1;
+    word-break: break-all;
+}
+.report-meta-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+.md-body {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    line-height: 1.8;
+}
+.md-body h1, .md-body h2, .md-body h3 { color: #e2e8f0; margin: 1.2rem 0 0.5rem; }
+.md-body h1 { font-size: 1.3rem; border-bottom: 1px solid #334155; padding-bottom: 0.4rem; }
+.md-body h2 { font-size: 1.1rem; }
+.md-body h3 { font-size: 0.95rem; color: #94a3b8; }
+.md-body p { margin: 0.5rem 0; }
+.md-body ul, .md-body ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+.md-body li { margin: 0.25rem 0; }
+.md-body code {
+    background: #0f172a;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.85rem;
+    color: #7dd3fc;
+}
+.md-body pre {
+    background: #0f172a;
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+}
+.md-body pre code { padding: 0; background: none; }
+.md-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.75rem 0;
+    font-size: 0.85rem;
+}
+.md-body th, .md-body td {
+    border: 1px solid #334155;
+    padding: 0.4rem 0.75rem;
+}
+.md-body th { background: #0f172a; color: #94a3b8; }
+.md-body hr { border: none; border-top: 1px solid #334155; margin: 1rem 0; }
+.actions { margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: center; }
+{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    {% if report.title() %}
+    <div>
+        <h2 style="font-size:1.3rem;font-weight:700;color:#e2e8f0;font-family:inherit;word-break:normal;">{{ report.title() }}</h2>
+        <div style="font-size:0.75rem;color:#475569;font-family:monospace;margin-top:0.3rem;">{{ report.id }}</div>
+    </div>
+    {% else %}
+    <h2>{{ report.id }}</h2>
+    {% endif %}
+</div>
+
+<div class="report-meta-row">
+    <span class="badge badge-{{ report.status.lower().replace('_', '-') }}">{{ report.status }}</span>
+    {% if report.created_at %}
+    <span>Created on {{ report.created_at.strftime('%m/%d/%Y %H:%M UTC') }}</span>
+    {% endif %}
+    <span>{{ report.event_uids | length }} event(s)</span>
+</div>
+
+{% if request.query_params.get('msg') == 'fix_started' %}
+<div style="background:#065f46;border:1px solid #34d399;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:#a7f3d0;">
+    ⚡ Fix started in the background. Refresh the page in a few moments to see the result.
+</div>
+{% elif request.query_params.get('msg') == 'already_running' %}
+<div style="background:#1c1917;border:1px solid #78716c;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:#d6d3d1;">
+    This report is already being fixed or has been completed.
+</div>
+{% endif %}
+
+{% if report.status in ('COMPLETE', 'FIX_FAILED') %}
+<div class="actions">
+    <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back</a>
+    <form method="post" action="/reports/{{ report.id }}/fix">
+        <button type="submit" class="btn btn-primary">⚡ Execute Fix</button>
+    </form>
+</div>
+{% elif report.status == 'FIXING' %}
+<div class="actions">
+    <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back</a>
+    <button class="btn btn-primary" disabled style="opacity:0.5;cursor:not-allowed;">⏳ Fixing...</button>
+</div>
+{% else %}
+<div class="actions">
+    <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back</a>
+</div>
+{% endif %}
+
+<div class="md-body">
+{% if html_content %}
+{{ html_content | safe }}
+{% else %}
+<p style="color:#64748b;">This report has no content yet (analysis in progress or inconclusive).</p>
+{% endif %}
+</div>
+
+{% if report.event_uids %}
+<details style="margin-top:1.5rem;">
+    <summary style="cursor:pointer;color:#64748b;font-size:0.8rem;">Event UIDs ({{ report.event_uids|length }})</summary>
+    <pre style="background:#1e293b;border-radius:6px;padding:0.75rem;font-size:0.75rem;margin-top:0.5rem;">{% for uid in report.event_uids %}{{ uid }}
+{% endfor %}</pre>
+</details>
+{% endif %}
+{% endblock %}

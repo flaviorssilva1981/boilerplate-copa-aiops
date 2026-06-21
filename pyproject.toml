@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "markdown>=3.7",
     "httpx>=0.28.0",
+    "kubernetes>=34.1.0",
 ]
 
 [tool.uv]

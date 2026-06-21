@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server-kubernetes
+  namespace: aiops
+  labels:
+    app: mcp-server-kubernetes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server-kubernetes
+  template:
+    metadata:
+      labels:
+        app: mcp-server-kubernetes
+    spec:
+      serviceAccountName: aiops-mcp-server
+      containers:
+        - name: mcp
+          image: flux159/mcp-server-kubernetes:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            - name: ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT
+              value: "1"
+            - name: PORT
+              value: "3001"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: MCP_ALLOWED_HOSTS
+              value: "mcp-server-kubernetes,mcp-server-kubernetes:3001,localhost,127.0.0.1"
+            - name: ALLOWED_HOSTS
+              value: "mcp-server-kubernetes,mcp-server-kubernetes:3001,localhost,127.0.0.1"
+            # MCP_AUTH_TOKEN intentionally omitted: the MCP server is ClusterIP-only
+            # and not reachable from outside the cluster.
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-server-kubernetes
+  namespace: aiops
+  labels:
+    app: mcp-server-kubernetes
+spec:
+  selector:
+    app: mcp-server-kubernetes
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http

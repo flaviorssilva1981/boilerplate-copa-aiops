@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aiops-agent-app
+  namespace: aiops
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    external-dns.alpha.kubernetes.io/hostname: dublinconsulting.com.br
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - aiops.dublinconsulting.com.br
+      secretName: aiops-agent-app-tls
+  rules:
+    - host: aiops.dublinconsulting.com.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: aiops-agent-app
+                port:
+                  number: 80
