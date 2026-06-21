@@ -1,0 +1,14 @@
+# Gitleaks config — secret scanning (DevSecOps)
+# Allow documented placeholders and local-only examples (not real credentials).
+
+title = "aiops gitleaks config"
+
+[allowlist]
+description = "Known false positives in docs and example files"
+paths = [
+  '''\.env\.example$''',
+  '''README\.md$''',
+  '''CLAUDE\.md$''',
+  '''docker-compose\.yml$''',
+  '''docs/''',
+]

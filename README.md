@@ -99,7 +99,8 @@ Kubernetes Cluster
 | **UV + hatchling** | Package manager and build system |
 | **Docker Compose** | Local PostgreSQL + pgAdmin |
 | **Docker Hub** | Container image registry (`flaviorssilva/aiops`) |
-| **GitHub Actions** | CI/CD pipeline (build → push → deploy) |
+| **GitHub Actions** | CI/CD + DevSecOps pipeline (lint → security → build → deploy) |
+| **Ruff / Bandit / Gitleaks / Trivy** | Lint, SAST, secret scanning, dependency vuln checks in CI |
 | **Oracle OKE** | Production Kubernetes cluster |
 
 ---
@@ -110,7 +111,10 @@ Kubernetes Cluster
 .
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml             # GitHub Actions CI/CD pipeline
+│       └── deploy.yml             # GitHub Actions CI/CD + DevSecOps pipeline
+│
+├── .gitleaks.toml                 # Secret-scan allowlist (docs / .env.example)
+├── .trivyignore                   # Accepted CVE exceptions for Trivy CI scan
 │
 ├── Dockerfile                     # Multi-stage build (UV + Python 3.12-slim)
 │
@@ -171,11 +175,11 @@ Kubernetes Cluster
 | `ANTHROPIC_API_KEY` | Requesty AI key (Anthropic-compatible) | *(required)* |
 | `ANTHROPIC_BASE_URL` | LLM proxy base URL | `https://router.requesty.ai` |
 | `AGENT_MODEL_NAME` | Claude model slug | `anthropic/claude-sonnet-4-5` |
-| `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://aiops:aiops123@localhost:5432/aiops_k8s` |
+| `DATABASE_URL` | Async PostgreSQL connection string | *(set in `.env` — see `.env.example`)* |
 | `MCP_SERVER_URL` | HTTP endpoint of the MCP Kubernetes server | `http://localhost:3001/mcp` |
 | `MCP_AUTH_TOKEN` | Optional bearer token for MCP server auth | *(none)* |
-| `BASIC_AUTH_USER` | Username for web UI Basic Auth | `admin` |
-| `BASIC_AUTH_PASSWORD` | Password for web UI Basic Auth | *(required)* |
+| `BASIC_AUTH_USER` | Username for web UI Basic Auth | *(set in `.env`)* |
+| `BASIC_AUTH_PASSWORD` | Password for web UI Basic Auth | *(required — set in `.env`)* |
 
 Copy `.env.example` to `.env` and fill in the values before running locally.
 
@@ -202,7 +206,7 @@ cp .env.example .env
 
 ```bash
 docker compose up -d
-# PostgreSQL on :5432, pgAdmin on :5050 (admin@admin.com / admin123)
+# PostgreSQL on :5432, pgAdmin on :5050 (credentials in docker-compose.yml / .env)
 ```
 
 ### 3. Install dependencies
@@ -227,33 +231,77 @@ Open `http://localhost:8000` — log in with the credentials from `.env`.
 
 ---
 
-## CI/CD Pipeline (GitHub Actions)
+## CI/CD Pipeline (GitHub Actions + DevSecOps)
 
 Every push to `main` (i.e. after merging a PR) automatically triggers the pipeline defined in `.github/workflows/deploy.yml`.
+
+The pipeline runs **four jobs in sequence**. Lint and security run in parallel first; build and deploy only proceed if both pass.
 
 ```
 push to main
      │
-     ▼
-┌─────────────────────────────────────────┐
-│  Job 1: build                           │
-│  ─────────────────────────────────────  │
-│  1. checkout                            │
-│  2. docker buildx build                 │
-│  3. push flaviorssilva/aiops:<sha>      │
-│     push flaviorssilva/aiops:latest     │
-└──────────────────┬──────────────────────┘
-                   │ (on success)
-                   ▼
-┌─────────────────────────────────────────┐
-│  Job 2: deploy                          │
-│  ─────────────────────────────────────  │
-│  1. configure kubeconfig (SA token)     │
-│  2. sync secrets → cluster              │
-│  3. kubectl set image (if changed)      │
-│  4. kubectl rollout status --timeout    │
-│  5. smoke test /api/health              │
-└─────────────────────────────────────────┘
+     ├──────────────────────────┬──────────────────────────┐
+     ▼                          ▼                          │
+┌─────────────────────┐  ┌─────────────────────────────┐  │
+│  Job 1: lint          │  │  Job 2: security            │  │
+│  ───────────────────  │  │  ─────────────────────────  │  │
+│  Ruff lint            │  │  Gitleaks (secret leaks)    │  │
+│  Ruff format check    │  │  Bandit (Python SAST)       │  │
+│  src/ + deploy/       │  │  Trivy fs (CRITICAL/HIGH)   │  │
+└──────────┬──────────┘  └──────────────┬──────────────┘  │
+           │                            │                  │
+           └────────────┬───────────────┘                  │
+                        │ (both must pass)                   │
+                        ▼                                  │
+           ┌─────────────────────────────┐                 │
+           │  Job 3: build               │                 │
+           │  ─────────────────────────  │                 │
+           │  1. checkout                │                 │
+           │  2. docker buildx build     │                 │
+           │  3. push flaviorssilva/aiops:<sha>            │
+           │     push flaviorssilva/aiops:latest           │
+           └──────────────┬──────────────┘                 │
+                          │ (on success)                   │
+                          ▼                                │
+           ┌─────────────────────────────┐                 │
+           │  Job 4: deploy              │                 │
+           │  ─────────────────────────  │                 │
+           │  1. configure kubeconfig    │                 │
+           │  2. sync secrets → cluster  │                 │
+           │  3. kubectl set image       │                 │
+           │     (only if tag changed)   │                 │
+           │  4. kubectl rollout status  │                 │
+           │  5. smoke test /api/health  │                 │
+           └─────────────────────────────┘                 │
+```
+
+### DevSecOps jobs
+
+| Job | Tool | What it checks |
+|-----|------|----------------|
+| **lint** | [Ruff](https://docs.astral.sh/ruff/) | Python style, imports, common bugs, and formatting (`src/` + `deploy/`) |
+| **security** | [Gitleaks](https://github.com/gitleaks/gitleaks) | Hardcoded secrets, API keys, tokens in git history |
+| **security** | [Bandit](https://bandit.readthedocs.io/) | Python SAST — unsafe patterns in application code |
+| **security** | [Trivy](https://trivy.dev/) | Filesystem/dependency scan for **CRITICAL** and **HIGH** CVEs |
+
+Ruff rules are configured in `pyproject.toml` under `[tool.ruff]`. Gitleaks uses `.gitleaks.toml` to allow documented placeholders in `.env.example`, README, and docs. Trivy exceptions go in `.trivyignore`.
+
+> **Cluster vs CI Trivy:** Trivy in CI scans the repository and dependencies before build. The **Trivy Operator** already running in your `security` namespace scans live workloads in the cluster — the two complement each other.
+
+### Run checks locally (before pushing)
+
+```bash
+# Install tools once
+pip install ruff bandit
+# Trivy: https://trivy.dev/latest/getting-started/installation/
+
+# Lint
+ruff check src deploy
+ruff format --check src deploy
+
+# Security
+bandit -r src -ll
+trivy fs --severity CRITICAL,HIGH .
 ```
 
 ### GitHub Secrets required
@@ -263,14 +311,14 @@ push to main
 | `DOCKER_TOKEN` | Docker Hub personal access token |
 | `KUBECONFIG_DATA` | Base64-encoded static kubeconfig (SA token, no OCI CLI needed) |
 | `POSTGRES_PASSWORD` | PostgreSQL password injected into `postgres-credentials` k8s Secret |
+| `BASIC_AUTH_USER` | Web UI Basic Auth username injected into `aiops-secrets` k8s Secret |
 | `BASIC_AUTH_PASSWORD` | Web UI Basic Auth password injected into `aiops-secrets` k8s Secret |
-| `DATABASE_URL` | Full async connection string (derived from `POSTGRES_PASSWORD`) |
 
-> All secrets were created in the repo automatically. To regenerate `KUBECONFIG_DATA` after cluster changes, run `deploy/generate-github-kubeconfig.ps1`.
+> All secrets are stored in GitHub — never in git. To regenerate `KUBECONFIG_DATA` after cluster changes, run `deploy/generate-github-kubeconfig.ps1`.
 
 ### Anti-duplication guard
 
-The deploy job reads the current image tag from the running deployment and **skips the rollout if the tag hasn't changed** — so re-triggering the workflow on a non-code commit (e.g. README update) won't cause an unnecessary pod restart.
+The deploy job reads the current image tag from the running deployment and **skips the rollout if the tag hasn't changed** — so re-triggering the workflow on a non-code commit won't cause an unnecessary pod restart.
 
 ### Concurrency
 
@@ -287,7 +335,7 @@ If two pushes arrive in quick succession, the older run is cancelled automatical
 Before updating the image, the pipeline patches both Kubernetes Secrets from GitHub Secrets:
 
 - `postgres-credentials` → `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-- `aiops-secrets` → `DATABASE_URL`, `BASIC_AUTH_PASSWORD`
+- `aiops-secrets` → `DATABASE_URL`, `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD`
 
 This means **no passwords are ever stored in git**. Rotating a credential is a single GitHub Secret update — the next deploy propagates it to the cluster automatically.
 
