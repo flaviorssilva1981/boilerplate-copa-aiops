@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: github-actions
+  namespace: aiops
+---
+# Long-lived token for use in GitHub Actions (Kubernetes 1.24+)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-actions-token
+  namespace: aiops
+  annotations:
+    kubernetes.io/service-account.name: github-actions
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: github-actions-deployer
+  namespace: aiops
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/status", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: github-actions-deployer
+  namespace: aiops
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: github-actions-deployer
+subjects:
+  - kind: ServiceAccount
+    name: github-actions
+    namespace: aiops
