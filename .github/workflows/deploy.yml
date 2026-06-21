@@ -82,7 +82,7 @@ jobs:
 
       - name: Verify cluster connection
         run: |
-          kubectl get namespace ${{ env.NAMESPACE }}
+          kubectl -n ${{ env.NAMESPACE }} get deployment ${{ env.DEPLOYMENT }}
 
       - name: Sync cluster secrets from GitHub Secrets
         run: |
