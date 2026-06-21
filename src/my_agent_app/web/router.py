@@ -47,7 +47,9 @@ async def health_page(request: Request):
         "health.html",
         {
             "db_ok": db_ok,
-            "report_stats": [{"status": str(r["status"]), "count": r["count"]} for r in report_stats],
+            "report_stats": [
+                {"status": str(r["status"]), "count": r["count"]} for r in report_stats
+            ],
             "total_reports": sum(r["count"] for r in report_stats),
             "model": os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-4-5"),
             "mcp_url": os.environ.get("MCP_SERVER_URL", "http://mcp-server-kubernetes:3001/mcp"),
@@ -141,7 +143,10 @@ async def _run_fix_in_background(
         logger.exception("Fix agent failed for report %s", report_id)
         await _set_status(
             ReportStatus.FALHA_CORRECAO,
-            "## Fix Result\n\n**Status:** FAILURE\n\nInternal error while running the fix agent. Check server logs.",
+            (
+                "## Fix Result\n\n**Status:** FAILURE\n\n"
+                "Internal error while running the fix agent. Check server logs."
+            ),
         )
 
 
@@ -172,14 +177,23 @@ async def stream_fix_report(request: Request, report_id: uuid.UUID):
         async def _not_found():
             yield _sse({"type": "error", "content": f"Report {report_id} not found"})
 
-        return StreamingResponse(_not_found(), media_type="text/event-stream", headers=_sse_headers)
+        return StreamingResponse(
+            _not_found(), media_type="text/event-stream", headers=_sse_headers
+        )
 
     if report.status not in (ReportStatus.COMPLETO, ReportStatus.FALHA_CORRECAO):
 
         async def _not_fixable():
-            yield _sse({"type": "error", "content": "Report is not in a fixable state (must be COMPLETE or FIX_FAILED)."})
+            yield _sse({
+                "type": "error",
+                "content": (
+                    "Report is not in a fixable state (must be COMPLETE or FIX_FAILED)."
+                ),
+            })
 
-        return StreamingResponse(_not_fixable(), media_type="text/event-stream", headers=_sse_headers)
+        return StreamingResponse(
+            _not_fixable(), media_type="text/event-stream", headers=_sse_headers
+        )
 
     report_markdown = report.markdown or ""
     sessionmaker = request.app.state.sessionmaker

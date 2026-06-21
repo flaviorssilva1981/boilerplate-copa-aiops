@@ -8,10 +8,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
-logging.basicConfig(level=logging.INFO)
-
 from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -25,6 +21,10 @@ from my_agent_app.collector import EventCollector, EventHandler
 from my_agent_app.database import Base, get_database_url
 from my_agent_app.models import Report, ReportStatus
 from my_agent_app.web.router import router as web_router
+
+load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
 
 _AUTH_USER = os.environ.get("BASIC_AUTH_USER", "")
 _AUTH_PASSWORD = os.environ.get("BASIC_AUTH_PASSWORD", "")
@@ -47,9 +47,9 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Basic "):
             try:
                 decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
-                username, _, password = decoded.partition(":")
+                username, _, submitted_password = decoded.partition(":")
                 user_ok = secrets.compare_digest(username, _AUTH_USER)
-                pass_ok = secrets.compare_digest(password, _AUTH_PASSWORD)
+                pass_ok = secrets.compare_digest(submitted_password, _AUTH_PASSWORD)
                 authenticated = user_ok and pass_ok
             except Exception:
                 pass

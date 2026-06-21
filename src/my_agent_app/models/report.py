@@ -25,7 +25,9 @@ class Report(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     markdown: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default=ReportStatus.EM_ANALISE)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default=ReportStatus.EM_ANALISE
+    )
     event_uids: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -53,9 +55,17 @@ class Report(Base):
         for line in self.markdown.splitlines():
             stripped = line.strip()
             if "**Severity:**" in stripped or "**Severidade:**" in stripped:
-                for level in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "CRITICO", "ALTO", "MEDIO", "BAIXO"):
+                levels = (
+                    "CRITICAL", "HIGH", "MEDIUM", "LOW",
+                    "CRITICO", "ALTO", "MEDIO", "BAIXO",
+                )
+                for level in levels:
                     if level in stripped.upper():
-                        # Normalize legacy Portuguese levels to English
-                        mapping = {"CRITICO": "CRITICAL", "ALTO": "HIGH", "MEDIO": "MEDIUM", "BAIXO": "LOW"}
+                        mapping = {
+                            "CRITICO": "CRITICAL",
+                            "ALTO": "HIGH",
+                            "MEDIO": "MEDIUM",
+                            "BAIXO": "LOW",
+                        }
                         return mapping.get(level, level)
         return "—"
