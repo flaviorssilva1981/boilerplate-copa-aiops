@@ -117,8 +117,8 @@ def _split_into_problem_sections(markdown: str, event_uids: list[str]) -> list[d
 
     i = 1
     while i < len(parts) - 1:
-        heading = parts[i]          # e.g. "## Problema 1"
-        body = parts[i + 1]         # e.g. ": Vault selado...\n..."
+        heading = parts[i]  # e.g. "## Problema 1"
+        body = parts[i + 1]  # e.g. ": Vault selado...\n..."
         section_md = heading + body
         uid_matches = re.findall(
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
@@ -252,7 +252,11 @@ async def run_rca_analysis(events: list[dict], max_retries: int = 3) -> list[dic
                 wait = 10 * attempt
                 logger.warning(
                     "RCA agent attempt %d/%d transient error; retrying in %ds: %s: %s",
-                    attempt, max_retries, wait, type(exc).__name__, exc,
+                    attempt,
+                    max_retries,
+                    wait,
+                    type(exc).__name__,
+                    exc,
                 )
                 await asyncio.sleep(wait)
                 continue

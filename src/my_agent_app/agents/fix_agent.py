@@ -204,9 +204,7 @@ async def stream_fix_execution(report_markdown: str) -> AsyncGenerator[dict, Non
                 tool_name = event.get("name", "unknown")
                 raw_output = event.get("data", {}).get("output", "")
                 output_str = (
-                    str(raw_output.content)
-                    if hasattr(raw_output, "content")
-                    else str(raw_output)
+                    str(raw_output.content) if hasattr(raw_output, "content") else str(raw_output)
                 )
                 if len(output_str) > 3000:
                     output_str = output_str[:3000] + "\n… (output truncated)"
@@ -254,7 +252,11 @@ async def run_fix_execution(report_markdown: str, max_retries: int = 3) -> tuple
                 wait = 10 * attempt
                 logger.warning(
                     "Fix agent attempt %d/%d transient error; retrying in %ds: %s: %s",
-                    attempt, max_retries, wait, type(exc).__name__, exc,
+                    attempt,
+                    max_retries,
+                    wait,
+                    type(exc).__name__,
+                    exc,
                 )
                 await asyncio.sleep(wait)
                 continue

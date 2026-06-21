@@ -52,9 +52,7 @@ async def _mark_stale_reports(session: AsyncSession) -> None:
     await session.commit()
 
 
-async def _filter_new_events(
-    session: AsyncSession, events: list[dict]
-) -> list[dict]:
+async def _filter_new_events(session: AsyncSession, events: list[dict]) -> list[dict]:
     """Return only events whose UIDs are not already in an active report."""
     await _mark_stale_reports(session)
 

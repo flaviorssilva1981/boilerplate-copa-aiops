@@ -61,9 +61,7 @@ async def health_page(request: Request):
 async def reports_list(request: Request):
     try:
         async with request.app.state.sessionmaker() as session:
-            result = await session.execute(
-                select(Report).order_by(Report.created_at.desc())
-            )
+            result = await session.execute(select(Report).order_by(Report.created_at.desc()))
             reports = result.scalars().all()
     except SQLAlchemyError:
         return templates.TemplateResponse(
@@ -73,9 +71,7 @@ async def reports_list(request: Request):
             status_code=503,
         )
 
-    return templates.TemplateResponse(
-        request, "reports.html", {"reports": reports}
-    )
+    return templates.TemplateResponse(request, "reports.html", {"reports": reports})
 
 
 @router.get("/reports/{report_id}", response_class=HTMLResponse)
@@ -176,19 +172,19 @@ async def stream_fix_report(request: Request, report_id: uuid.UUID):
         async def _not_found():
             yield _sse({"type": "error", "content": f"Report {report_id} not found"})
 
-        return StreamingResponse(
-            _not_found(), media_type="text/event-stream", headers=_sse_headers
-        )
+        return StreamingResponse(_not_found(), media_type="text/event-stream", headers=_sse_headers)
 
     if report.status not in (ReportStatus.COMPLETO, ReportStatus.FALHA_CORRECAO):
 
         async def _not_fixable():
-            yield _sse({
-                "type": "error",
-                "content": (
-                    "Report is not in a fixable state (must be COMPLETE or FIX_FAILED)."
-                ),
-            })
+            yield _sse(
+                {
+                    "type": "error",
+                    "content": (
+                        "Report is not in a fixable state (must be COMPLETE or FIX_FAILED)."
+                    ),
+                }
+            )
 
         return StreamingResponse(
             _not_fixable(), media_type="text/event-stream", headers=_sse_headers
