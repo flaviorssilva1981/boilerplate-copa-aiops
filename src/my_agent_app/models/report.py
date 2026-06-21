@@ -21,13 +21,9 @@ class ReportStatus(StrEnum):
 class Report(Base):
     __tablename__ = "reports"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     markdown: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=ReportStatus.EM_ANALISE
-    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default=ReportStatus.EM_ANALISE)
     event_uids: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -39,6 +35,7 @@ class Report(Base):
     def title(self) -> str:
         """Extract problem title from the first '## Problem N: title' heading."""
         import re
+
         for line in self.markdown.splitlines():
             # Match English format: ## Problem 1: title
             m = re.match(r"^##\s+Problem(?:\s+\d+)?\s*:\s*(.+)", line.strip())
@@ -56,8 +53,14 @@ class Report(Base):
             stripped = line.strip()
             if "**Severity:**" in stripped or "**Severidade:**" in stripped:
                 levels = (
-                    "CRITICAL", "HIGH", "MEDIUM", "LOW",
-                    "CRITICO", "ALTO", "MEDIO", "BAIXO",
+                    "CRITICAL",
+                    "HIGH",
+                    "MEDIUM",
+                    "LOW",
+                    "CRITICO",
+                    "ALTO",
+                    "MEDIO",
+                    "BAIXO",
                 )
                 for level in levels:
                     if level in stripped.upper():
