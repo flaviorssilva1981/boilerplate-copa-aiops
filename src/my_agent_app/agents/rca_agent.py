@@ -90,10 +90,11 @@ def _get_max_iterations() -> int:
     raw = os.environ.get("AGENT_MAX_ITERATIONS", "25")
     try:
         value = int(raw)
-        if value > 0:
-            return value
     except ValueError:
-        pass
+        logger.warning("Invalid AGENT_MAX_ITERATIONS=%r; using default 25", raw)
+        return 25
+    if value > 0:
+        return value
     logger.warning("Invalid AGENT_MAX_ITERATIONS=%r; using default 25", raw)
     return 25
 

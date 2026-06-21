@@ -64,7 +64,7 @@ jobs:
       - name: Python SAST (Bandit)
         run: |
           pip install bandit
-          bandit -r src -ll -ii -x tests
+          bandit -c pyproject.toml -r src -ll -ii -x tests
 
       - name: Dependency & filesystem scan (Trivy)
         uses: aquasecurity/trivy-action@v0.36.0

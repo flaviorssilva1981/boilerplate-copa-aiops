@@ -28,10 +28,11 @@ def _get_stale_timeout() -> int:
     raw = os.environ.get("ANALYSIS_STALE_TIMEOUT_MINUTES", "30")
     try:
         value = int(raw)
-        if value > 0:
-            return value
     except ValueError:
-        pass
+        logger.warning("Invalid ANALYSIS_STALE_TIMEOUT_MINUTES=%r; using 30", raw)
+        return 30
+    if value > 0:
+        return value
     logger.warning("Invalid ANALYSIS_STALE_TIMEOUT_MINUTES=%r; using 30", raw)
     return 30
 

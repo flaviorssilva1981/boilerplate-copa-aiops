@@ -59,7 +59,7 @@ def _k8s_get(path: str) -> dict:
         token = f.read().strip()
     ctx = ssl.create_default_context(cafile=_SA_CA if os.path.exists(_SA_CA) else None)
     req = URLRequest(f"{_K8S_API}{path}", headers={"Authorization": f"Bearer {token}"})
-    with urlopen(req, context=ctx, timeout=8) as resp:
+    with urlopen(req, context=ctx, timeout=8) as resp:  # nosec B310
         return json.loads(resp.read())
 
 

@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-
 from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -51,8 +50,8 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
                 user_ok = secrets.compare_digest(username, _AUTH_USER)
                 pass_ok = secrets.compare_digest(submitted_password, _AUTH_PASSWORD)
                 authenticated = user_ok and pass_ok
-            except Exception:
-                pass
+            except (ValueError, UnicodeDecodeError):
+                authenticated = False
 
         if not authenticated:
             return Response(
