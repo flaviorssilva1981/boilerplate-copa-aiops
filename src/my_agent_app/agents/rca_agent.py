@@ -1,4 +1,4 @@
-"""RCA agent: LangChain 1.x create_agent + Claude Sonnet via Requesty + MCP Kubernetes (read-only)."""
+"""RCA agent: LangChain create_agent + Claude Sonnet + MCP Kubernetes (read-only)."""
 
 import asyncio
 import json
@@ -18,10 +18,12 @@ logger = logging.getLogger(__name__)
 READ_ONLY_TOOLS = {"kubectl_get", "kubectl_describe", "kubectl_logs"}
 
 SYSTEM_PROMPT = """\
-You are a Kubernetes diagnostics specialist. Your role is to investigate and identify problems using the available tools.
+You are a Kubernetes diagnostics specialist. Your role is to investigate problems
+using the available tools.
 
 ## RULES
-- Only diagnose and suggest fixes. NEVER execute kubectl_patch, kubectl_apply or kubectl_delete.
+- Only diagnose and suggest fixes. NEVER execute kubectl_patch, kubectl_apply
+  or kubectl_delete.
 - Use ONLY the documented parameters of each tool.
 - Investigate by GROUPED PROBLEM, not by individual event.
 - Once you have root cause + sufficient evidence, move on to the next problem.
@@ -30,7 +32,8 @@ You are a Kubernetes diagnostics specialist. Your role is to investigate and ide
 
 ## HOW TO INVESTIGATE
 You have 3 read-only tools. Use them IMMEDIATELY to collect evidence:
-- **kubectl_get**: overview of resources (status, restarts, age). Use `name` OR `labelSelector`, NEVER both together.
+- **kubectl_get**: overview of resources (status, restarts, age).
+  Use `name` OR `labelSelector`, NEVER both together.
 - **kubectl_describe**: full details (events, conditions, configuration).
 - **kubectl_logs**: container logs. Use `previous: true` for logs from a previous run.
 

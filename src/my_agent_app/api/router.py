@@ -101,7 +101,10 @@ async def cluster_metrics():
                 }
         except HTTPError as e:
             if e.code == 403:
-                logger.warning("cluster_metrics: no permission for metrics.k8s.io (403) — add RBAC ClusterRole")
+                logger.warning(
+                    "cluster_metrics: no permission for metrics.k8s.io (403) "
+                    "— add RBAC ClusterRole"
+                )
             else:
                 raise
 
@@ -154,8 +157,16 @@ async def cluster_metrics():
 
         has_usage = bool(nodes_usage)
         return {
-            "cpu_pct":      round(total_cpu_used / total_cpu_alloc * 100, 1) if has_usage and total_cpu_alloc else None,
-            "mem_pct":      round(total_mem_used / total_mem_alloc * 100, 1) if has_usage and total_mem_alloc else None,
+            "cpu_pct": (
+                round(total_cpu_used / total_cpu_alloc * 100, 1)
+                if has_usage and total_cpu_alloc
+                else None
+            ),
+            "mem_pct": (
+                round(total_mem_used / total_mem_alloc * 100, 1)
+                if has_usage and total_mem_alloc
+                else None
+            ),
             "cpu_detail":   f"{int(total_cpu_used)}m / {int(total_cpu_alloc)}m" if has_usage else None,
             "mem_detail":   f"{_fmt_mem(int(total_mem_used))} / {_fmt_mem(int(total_mem_alloc))}" if has_usage else None,
             "pods_total":   pods_total,
