@@ -1,10 +1,10 @@
-"""Fix agent: executes the correction commands from an RCA report via MCP."""
+"""Fix agent: executes correction commands from an RCA report via MCP."""
 
 import asyncio
 import json
 import logging
 import os
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -34,11 +34,13 @@ You have received a diagnostics report with the identified root cause and sugges
 Your task is to EXECUTE the suggested fixes using the available tools.
 
 ## RULES
-- Execute ONLY the commands listed in the "Recommended Fix" and "Suggested Command" sections of the report.
+- Execute ONLY the commands listed in the "Recommended Fix" and "Suggested Command"
+  sections of the report.
 - Do not invent fixes not documented in the report.
 - After executing each command, verify the result with kubectl_get or kubectl_describe.
 - If a command fails, try the alternative suggested in the report.
-- Do not execute kubectl_delete on critical resources (nodes, system namespaces, PVs) without explicit confirmation.
+- Do not execute kubectl_delete on critical resources (nodes, system namespaces, PVs)
+  without explicit confirmation.
 - At the end, report what was executed, the result, and whether the problem was resolved.
 
 ## RESPONSE FORMAT
@@ -158,7 +160,11 @@ async def stream_fix_execution(report_markdown: str) -> AsyncGenerator[dict, Non
         yield {"type": "error", "content": "No kubectl tools returned by MCP Server."}
         return
 
-    yield {"type": "info", "content": f"Connected. {len(fix_tools)} tools available: {', '.join(t.name for t in fix_tools)}"}
+    tool_names = ", ".join(t.name for t in fix_tools)
+    yield {
+        "type": "info",
+        "content": f"Connected. {len(fix_tools)} tools available: {tool_names}",
+    }
 
     llm = get_agent_llm()
     agent = create_agent(
