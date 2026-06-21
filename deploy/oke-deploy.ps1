@@ -1,6 +1,8 @@
 # Deploy the AIOps stack to OKE from Windows PowerShell.
 # Usage:
 #   $env:ANTHROPIC_API_KEY = "<your-requesty-key>"
+#   $env:BASIC_AUTH_PASSWORD = "<your-web-ui-password>"
+#   $env:POSTGRES_PASSWORD   = "<your-db-password>"  # optional, defaults to aiops123
 #   .\deploy\oke-deploy.ps1
 
 $ErrorActionPreference = "Stop"

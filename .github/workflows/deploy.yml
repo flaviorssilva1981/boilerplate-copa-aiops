@@ -110,10 +110,10 @@ jobs:
           echo "new_image=${NEW}"          >> "$GITHUB_OUTPUT"
           if [ "${CURRENT}" = "${NEW}" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "⚠ Image unchanged — skipping rollout"
+            echo "Image unchanged — skipping rollout"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "✓ Deploying ${NEW} (was: ${CURRENT})"
+            echo "Deploying ${NEW} (was: ${CURRENT})"
           fi
 
       - name: Update deployment image
@@ -139,12 +139,11 @@ jobs:
       - name: Smoke test (liveness probe)
         if: steps.check.outputs.skip == 'false'
         run: |
-          # Wait for pod IP and hit /api/health via kubectl exec
           sleep 10
           POD=$(kubectl -n ${{ env.NAMESPACE }} get pods \
             -l app=${{ env.DEPLOYMENT }} \
             -o jsonpath='{.items[0].metadata.name}')
           kubectl -n ${{ env.NAMESPACE }} exec "${POD}" -- \
             python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')" \
-            && echo "✓ Health check passed" \
-            || echo "⚠ Health check failed (pod may still be starting)"
+            && echo "Health check passed" \
+            || echo "Health check failed (pod may still be starting)"
