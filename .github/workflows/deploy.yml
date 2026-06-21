@@ -18,6 +18,7 @@ env:
   NAMESPACE:  aiops
   DEPLOYMENT: aiops-agent-app
   CONTAINER:  app
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   # ── 1. Build & Push Docker image ─────────────────────────────
