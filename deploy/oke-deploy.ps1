@@ -1,6 +1,8 @@
 # Deploy the AIOps stack to OKE from Windows PowerShell.
 # Usage:
 #   $env:ANTHROPIC_API_KEY = "<your-requesty-key>"
+#   $env:BASIC_AUTH_PASSWORD = "<your-web-ui-password>"
+#   $env:POSTGRES_PASSWORD   = "<your-db-password>"  # optional, defaults to aiops123
 #   .\deploy\oke-deploy.ps1
 
 $ErrorActionPreference = "Stop"
@@ -19,6 +21,11 @@ function Invoke-Kubectl {
 if (-not $env:ANTHROPIC_API_KEY) {
     throw "Set ANTHROPIC_API_KEY (Requesty key) before running this script."
 }
+if (-not $env:BASIC_AUTH_PASSWORD) {
+    throw "Set BASIC_AUTH_PASSWORD before running this script."
+}
+$BasicAuthUser    = if ($env:BASIC_AUTH_USER) { $env:BASIC_AUTH_USER } else { "admin" }
+$PostgresPassword = if ($env:POSTGRES_PASSWORD) { $env:POSTGRES_PASSWORD } else { "aiops123" }
 
 $McpToken = if ($env:MCP_AUTH_TOKEN) { $env:MCP_AUTH_TOKEN } else {
     -join ((48..57 + 97..102) | Get-Random -Count 48 | ForEach-Object { [char]$_ })
@@ -32,10 +39,21 @@ Invoke-Kubectl apply -f "$RootDir\k8s\aiops\namespace.yaml"
 Invoke-Kubectl apply -f "$RootDir\k8s\aiops\rbac.yaml"
 Invoke-Kubectl apply -f "$RootDir\k8s\aiops\postgres.yaml"
 
+Write-Host "==> Creating/updating postgres-credentials"
+kubectl --kubeconfig $KubeConfig --context $Context -n $Namespace create secret generic postgres-credentials `
+    --from-literal=POSTGRES_USER=aiops `
+    --from-literal=POSTGRES_PASSWORD=$PostgresPassword `
+    --from-literal=POSTGRES_DB=aiops_k8s `
+    --dry-run=client -o yaml | kubectl --kubeconfig $KubeConfig --context $Context apply -f -
+
 Write-Host "==> Creating/updating aiops-secrets"
+$DatabaseUrl = "postgresql+asyncpg://aiops:${PostgresPassword}@postgres:5432/aiops_k8s"
 kubectl --kubeconfig $KubeConfig --context $Context -n $Namespace create secret generic aiops-secrets `
     --from-literal=ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY `
     --from-literal=MCP_AUTH_TOKEN=$McpToken `
+    --from-literal=BASIC_AUTH_USER=$BasicAuthUser `
+    --from-literal=BASIC_AUTH_PASSWORD=$env:BASIC_AUTH_PASSWORD `
+    --from-literal=DATABASE_URL=$DatabaseUrl `
     --dry-run=client -o yaml | kubectl --kubeconfig $KubeConfig --context $Context apply -f -
 
 $TarPath = Join-Path $env:TEMP "aiops-context.tgz"

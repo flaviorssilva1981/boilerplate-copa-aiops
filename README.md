@@ -98,6 +98,8 @@ Kubernetes Cluster
 | **Kubernetes API (in-cluster)** | Direct metrics fetch via service account |
 | **UV + hatchling** | Package manager and build system |
 | **Docker Compose** | Local PostgreSQL + pgAdmin |
+| **Docker Hub** | Container image registry (`flaviorssilva/aiops`) |
+| **GitHub Actions** | CI/CD pipeline (build → push → deploy) |
 | **Oracle OKE** | Production Kubernetes cluster |
 
 ---
@@ -105,38 +107,59 @@ Kubernetes Cluster
 ## Project Structure
 
 ```
-src/my_agent_app/
-├── main.py                    # FastAPI app, lifespan, Basic Auth middleware
-├── database.py                # SQLAlchemy async engine + session factory
+.
+├── .github/
+│   └── workflows/
+│       └── deploy.yml             # GitHub Actions CI/CD pipeline
 │
-├── api/
-│   └── router.py              # /api/health, /api/health/cluster, /api/agent/ping
+├── Dockerfile                     # Multi-stage build (UV + Python 3.12-slim)
 │
-├── web/
-│   └── router.py              # Web routes: /, /health, /reports, /reports/:id/fix/stream
+├── deploy/
+│   ├── oke-deploy.ps1             # First-time OKE setup script (PowerShell)
+│   ├── oke-deploy.sh              # First-time OKE setup script (Bash)
+│   └── generate-github-kubeconfig.ps1  # Generates KUBECONFIG_DATA GitHub Secret
 │
-├── templates/
-│   ├── base.html              # Base layout (nav, dark theme, status badge CSS)
-│   ├── home.html              # Home page + architecture summary
-│   ├── health.html            # Lens-style health dashboard
-│   ├── reports.html           # Report list
-│   ├── report_detail.html     # Report detail + real-time fix terminal modal
-│   └── error.html             # Error page
+├── k8s/aiops/
+│   ├── namespace.yaml             # aiops namespace
+│   ├── rbac.yaml                  # ServiceAccounts, ClusterRoles, ClusterRoleBindings
+│   ├── github-actions-sa.yaml     # CI/CD service account + Role + RoleBinding
+│   ├── postgres.yaml              # PostgreSQL 17 PVC + Deployment + Service
+│   ├── mcp-server.yaml            # MCP Kubernetes server Deployment
+│   ├── app.yaml                   # FastAPI application Deployment + Service
+│   └── ingress.yaml               # NGINX Ingress with TLS
 │
-├── static/
-│   └── architecture.jpg       # Architecture diagram shown on home page
-│
-├── agents/
-│   ├── llm.py                 # ChatAnthropic factory (Requesty AI)
-│   ├── rca_agent.py           # RCA agent: diagnose events, write Markdown reports
-│   └── fix_agent.py           # Fix agent: execute kubectl commands + SSE streaming
-│
-├── collector/
-│   ├── collector.py           # asyncio background loop (every 3 min)
-│   └── event_handler.py       # Event deduplication + RCA dispatch
-│
-└── models/
-    └── report.py              # SQLAlchemy Report model, ReportStatus enum, helpers
+└── src/my_agent_app/
+    ├── main.py                    # FastAPI app, lifespan, Basic Auth middleware
+    ├── database.py                # SQLAlchemy async engine + session factory
+    │
+    ├── api/
+    │   └── router.py              # /api/health, /api/health/cluster, /api/agent/ping
+    │
+    ├── web/
+    │   └── router.py              # Web routes: /, /health, /reports, /reports/:id/fix/stream
+    │
+    ├── templates/
+    │   ├── base.html              # Base layout (nav, dark theme, status badge CSS)
+    │   ├── home.html              # Home page + architecture summary
+    │   ├── health.html            # Lens-style health dashboard
+    │   ├── reports.html           # Report list
+    │   ├── report_detail.html     # Report detail + real-time fix terminal modal
+    │   └── error.html             # Error page
+    │
+    ├── static/
+    │   └── architecture.jpg       # Architecture diagram shown on home page
+    │
+    ├── agents/
+    │   ├── llm.py                 # ChatAnthropic factory (Requesty AI)
+    │   ├── rca_agent.py           # RCA agent: diagnose events, write Markdown reports
+    │   └── fix_agent.py           # Fix agent: execute kubectl commands + SSE streaming
+    │
+    ├── collector/
+    │   ├── collector.py           # asyncio background loop (every 3 min)
+    │   └── event_handler.py       # Event deduplication + RCA dispatch
+    │
+    └── models/
+        └── report.py              # SQLAlchemy Report model, ReportStatus enum, helpers
 ```
 
 ---
@@ -204,13 +227,82 @@ Open `http://localhost:8000` — log in with the credentials from `.env`.
 
 ---
 
+## CI/CD Pipeline (GitHub Actions)
+
+Every push to `main` (i.e. after merging a PR) automatically triggers the pipeline defined in `.github/workflows/deploy.yml`.
+
+```
+push to main
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│  Job 1: build                           │
+│  ─────────────────────────────────────  │
+│  1. checkout                            │
+│  2. docker buildx build                 │
+│  3. push flaviorssilva/aiops:<sha>      │
+│     push flaviorssilva/aiops:latest     │
+└──────────────────┬──────────────────────┘
+                   │ (on success)
+                   ▼
+┌─────────────────────────────────────────┐
+│  Job 2: deploy                          │
+│  ─────────────────────────────────────  │
+│  1. configure kubeconfig (SA token)     │
+│  2. sync secrets → cluster              │
+│  3. kubectl set image (if changed)      │
+│  4. kubectl rollout status --timeout    │
+│  5. smoke test /api/health              │
+└─────────────────────────────────────────┘
+```
+
+### GitHub Secrets required
+
+| Secret | Description |
+|--------|-------------|
+| `DOCKER_TOKEN` | Docker Hub personal access token |
+| `KUBECONFIG_DATA` | Base64-encoded static kubeconfig (SA token, no OCI CLI needed) |
+| `POSTGRES_PASSWORD` | PostgreSQL password injected into `postgres-credentials` k8s Secret |
+| `BASIC_AUTH_PASSWORD` | Web UI Basic Auth password injected into `aiops-secrets` k8s Secret |
+| `DATABASE_URL` | Full async connection string (derived from `POSTGRES_PASSWORD`) |
+
+> All secrets were created in the repo automatically. To regenerate `KUBECONFIG_DATA` after cluster changes, run `deploy/generate-github-kubeconfig.ps1`.
+
+### Anti-duplication guard
+
+The deploy job reads the current image tag from the running deployment and **skips the rollout if the tag hasn't changed** — so re-triggering the workflow on a non-code commit (e.g. README update) won't cause an unnecessary pod restart.
+
+### Concurrency
+
+```yaml
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+If two pushes arrive in quick succession, the older run is cancelled automatically.
+
+### Secret sync on every deploy
+
+Before updating the image, the pipeline patches both Kubernetes Secrets from GitHub Secrets:
+
+- `postgres-credentials` → `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `aiops-secrets` → `DATABASE_URL`, `BASIC_AUTH_PASSWORD`
+
+This means **no passwords are ever stored in git**. Rotating a credential is a single GitHub Secret update — the next deploy propagates it to the cluster automatically.
+
+---
+
 ## Deploying to Kubernetes (OKE)
 
-The `deploy/oke-deploy.ps1` script (PowerShell) packages the source, creates the Kubernetes Secret, and rolls out all manifests:
+### First-time setup (manual)
+
+The `deploy/oke-deploy.ps1` script (PowerShell) creates all Kubernetes Secrets and rolls out all manifests from scratch:
 
 ```powershell
-$env:ANTHROPIC_API_KEY = "<your-requesty-key>"
-$env:BASIC_AUTH_PASSWORD = "Manager@2026"
+$env:ANTHROPIC_API_KEY   = "<your-requesty-key>"
+$env:BASIC_AUTH_PASSWORD = "<your-web-ui-password>"
+$env:POSTGRES_PASSWORD   = "<your-db-password>"
 .\deploy\oke-deploy.ps1
 ```
 
@@ -220,19 +312,19 @@ $env:BASIC_AUTH_PASSWORD = "Manager@2026"
 |----------|----------------|
 | `k8s/aiops/namespace.yaml` | `aiops` namespace |
 | `k8s/aiops/rbac.yaml` | ServiceAccounts, ClusterRoles, ClusterRoleBindings |
-| `k8s/aiops/postgres.yaml` | PostgreSQL 17 StatefulSet |
+| `k8s/aiops/github-actions-sa.yaml` | CI/CD service account + Role + RoleBinding |
+| `k8s/aiops/postgres.yaml` | PostgreSQL 17 PVC + Deployment + Service |
 | `k8s/aiops/mcp-server.yaml` | `npx mcp-server-kubernetes` Deployment |
-| `k8s/aiops/app.yaml` | FastAPI application Deployment |
+| `k8s/aiops/app.yaml` | FastAPI application Deployment (uses `flaviorssilva/aiops:latest`) |
 | `k8s/aiops/ingress.yaml` | NGINX Ingress with TLS |
-
-The application source is packaged into a `ConfigMap` (`aiops-app-source`) and mounted into the app container, which runs `uv sync && uvicorn` at startup — no Docker image rebuild required for code changes.
 
 ### RBAC summary
 
 | ServiceAccount | Permissions |
 |---------------|-------------|
-| `aiops-app` | `events` list/watch (event collection) + `nodes`/`pods`/`metrics.k8s.io` read (health dashboard) |
-| `aiops-mcp-server` | `edit` ClusterRole (kubectl apply/patch/delete via MCP) + RBAC resources read/write |
+| `aiops-app` | `events` list/watch + `nodes`/`pods`/`metrics.k8s.io` read (health dashboard) |
+| `aiops-mcp-server` | `edit` ClusterRole + RBAC resources read/write (kubectl via MCP) |
+| `github-actions` | `deployments` patch/update + `pods` list/watch (CI/CD only) |
 
 ---
 

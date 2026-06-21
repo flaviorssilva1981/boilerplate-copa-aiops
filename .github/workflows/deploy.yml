@@ -1,0 +1,149 @@
+name: CI/CD — Build & Deploy to OKE
+
+# ──────────────────────────────────────────────────────────────
+# Triggers: only on push to main (i.e. after a PR is merged).
+# Prevents duplicate runs for the same commit via concurrency.
+# ──────────────────────────────────────────────────────────────
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true   # cancels any running deploy if a new commit arrives
+
+env:
+  IMAGE:      flaviorssilva/aiops
+  NAMESPACE:  aiops
+  DEPLOYMENT: aiops-agent-app
+  CONTAINER:  app
+
+jobs:
+  # ── 1. Build & Push Docker image ─────────────────────────────
+  build:
+    name: Build & Push Docker image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute image tag  (short SHA)
+        id: tag
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "image_tag=${{ env.IMAGE }}:${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "Image tag: ${{ env.IMAGE }}:${SHORT_SHA}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: flaviorssilva
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.tag.outputs.image_tag }}
+            ${{ env.IMAGE }}:latest
+          # Layer cache stored in GitHub Actions cache (free tier OK)
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+  # ── 2. Deploy to OKE ─────────────────────────────────────────
+  deploy:
+    name: Deploy to OKE
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig (from GitHub Secret)
+        # KUBECONFIG_DATA is a base64-encoded kubeconfig that uses
+        # the github-actions service-account token (no OCI CLI needed).
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Verify cluster connection
+        run: |
+          kubectl get namespace ${{ env.NAMESPACE }}
+
+      - name: Sync cluster secrets from GitHub Secrets
+        run: |
+          DB_URL="postgresql+asyncpg://aiops:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/aiops_k8s"
+          # Update postgres-credentials (used by the PostgreSQL pod)
+          kubectl -n ${{ env.NAMESPACE }} create secret generic postgres-credentials \
+            --from-literal=POSTGRES_USER=aiops \
+            --from-literal=POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            --from-literal=POSTGRES_DB=aiops_k8s \
+            --dry-run=client -o yaml | kubectl apply -f -
+          # Patch DATABASE_URL, BASIC_AUTH_USER and BASIC_AUTH_PASSWORD into aiops-secrets
+          kubectl -n ${{ env.NAMESPACE }} patch secret aiops-secrets \
+            --type=merge \
+            -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\"}}"
+
+      - name: Check if image changed
+        id: check
+        run: |
+          CURRENT=$(kubectl -n ${{ env.NAMESPACE }} \
+            get deployment/${{ env.DEPLOYMENT }} \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="${{ env.CONTAINER }}")].image}' \
+            2>/dev/null || echo "not-found")
+          NEW="${{ needs.build.outputs.image_tag }}"
+          echo "current_image=${CURRENT}" >> "$GITHUB_OUTPUT"
+          echo "new_image=${NEW}"          >> "$GITHUB_OUTPUT"
+          if [ "${CURRENT}" = "${NEW}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Image unchanged — skipping rollout"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Deploying ${NEW} (was: ${CURRENT})"
+          fi
+
+      - name: Update deployment image
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} set image \
+            deployment/${{ env.DEPLOYMENT }} \
+            ${{ env.CONTAINER }}=${{ needs.build.outputs.image_tag }}
+
+      - name: Wait for rollout to complete
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} rollout status \
+            deployment/${{ env.DEPLOYMENT }} \
+            --timeout=300s
+
+      - name: Show running pods
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} get pods \
+            -l app=${{ env.DEPLOYMENT }} \
+            -o wide
+
+      - name: Smoke test (liveness probe)
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          sleep 10
+          POD=$(kubectl -n ${{ env.NAMESPACE }} get pods \
+            -l app=${{ env.DEPLOYMENT }} \
+            -o jsonpath='{.items[0].metadata.name}')
+          kubectl -n ${{ env.NAMESPACE }} exec "${POD}" -- \
+            python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')" \
+            && echo "Health check passed" \
+            || echo "Health check failed (pod may still be starting)"

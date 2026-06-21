@@ -1,13 +1,12 @@
-apiVersion: v1
-kind: Secret
-metadata:
-  name: postgres-credentials
-  namespace: aiops
-type: Opaque
-stringData:
-  POSTGRES_USER: aiops
-  POSTGRES_PASSWORD: aiops123
-  POSTGRES_DB: aiops_k8s
+# postgres-credentials Secret is NOT stored in git.
+# It is created/updated by the CI/CD pipeline (deploy.yml) and by deploy/oke-deploy.ps1
+# using the POSTGRES_PASSWORD GitHub Secret.
+# To recreate manually:
+#   kubectl -n aiops create secret generic postgres-credentials \
+#     --from-literal=POSTGRES_USER=aiops \
+#     --from-literal=POSTGRES_PASSWORD=<your-password> \
+#     --from-literal=POSTGRES_DB=aiops_k8s \
+#     --dry-run=client -o yaml | kubectl apply -f -
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

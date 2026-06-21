@@ -26,7 +26,7 @@ from my_agent_app.database import Base, get_database_url
 from my_agent_app.models import Report, ReportStatus
 from my_agent_app.web.router import router as web_router
 
-_AUTH_USER = os.environ.get("BASIC_AUTH_USER", "admin")
+_AUTH_USER = os.environ.get("BASIC_AUTH_USER", "")
 _AUTH_PASSWORD = os.environ.get("BASIC_AUTH_PASSWORD", "")
 
 # Paths that bypass authentication (k8s liveness/readiness probes)
