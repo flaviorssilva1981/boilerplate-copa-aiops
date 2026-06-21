@@ -24,6 +24,7 @@ if (-not $env:ANTHROPIC_API_KEY) {
 if (-not $env:BASIC_AUTH_PASSWORD) {
     throw "Set BASIC_AUTH_PASSWORD before running this script."
 }
+$BasicAuthUser    = if ($env:BASIC_AUTH_USER) { $env:BASIC_AUTH_USER } else { "admin" }
 $PostgresPassword = if ($env:POSTGRES_PASSWORD) { $env:POSTGRES_PASSWORD } else { "aiops123" }
 
 $McpToken = if ($env:MCP_AUTH_TOKEN) { $env:MCP_AUTH_TOKEN } else {
@@ -50,7 +51,7 @@ $DatabaseUrl = "postgresql+asyncpg://aiops:${PostgresPassword}@postgres:5432/aio
 kubectl --kubeconfig $KubeConfig --context $Context -n $Namespace create secret generic aiops-secrets `
     --from-literal=ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY `
     --from-literal=MCP_AUTH_TOKEN=$McpToken `
-    --from-literal=BASIC_AUTH_USER=admin `
+    --from-literal=BASIC_AUTH_USER=$BasicAuthUser `
     --from-literal=BASIC_AUTH_PASSWORD=$env:BASIC_AUTH_PASSWORD `
     --from-literal=DATABASE_URL=$DatabaseUrl `
     --dry-run=client -o yaml | kubectl --kubeconfig $KubeConfig --context $Context apply -f -
