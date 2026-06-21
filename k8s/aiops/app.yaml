@@ -26,7 +26,10 @@ spec:
               containerPort: 8000
           env:
             - name: DATABASE_URL
-              value: postgresql+asyncpg://aiops:aiops123@postgres:5432/aiops_k8s
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-secrets
+                  key: DATABASE_URL
             - name: MCP_SERVER_URL
               value: http://mcp-server-kubernetes:3001/mcp
             - name: ANTHROPIC_BASE_URL

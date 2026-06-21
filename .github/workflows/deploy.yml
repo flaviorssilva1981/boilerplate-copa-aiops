@@ -84,6 +84,20 @@ jobs:
         run: |
           kubectl get namespace ${{ env.NAMESPACE }}
 
+      - name: Sync cluster secrets from GitHub Secrets
+        run: |
+          DB_URL="postgresql+asyncpg://aiops:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/aiops_k8s"
+          # Update postgres-credentials (used by the PostgreSQL pod)
+          kubectl -n ${{ env.NAMESPACE }} create secret generic postgres-credentials \
+            --from-literal=POSTGRES_USER=aiops \
+            --from-literal=POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            --from-literal=POSTGRES_DB=aiops_k8s \
+            --dry-run=client -o yaml | kubectl apply -f -
+          # Patch DATABASE_URL and BASIC_AUTH_PASSWORD into aiops-secrets
+          kubectl -n ${{ env.NAMESPACE }} patch secret aiops-secrets \
+            --type=merge \
+            -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\"}}"
+
       - name: Check if image changed
         id: check
         run: |
