@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}Report {{ report.id }} — Kubernetes AIOps{% endblock %}
+
+{% block extra_style %}
+.report-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.report-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #94a3b8;
+    font-family: monospace;
+    flex: 1;
+    word-break: break-all;
+}
+.report-meta-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+.md-body {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    line-height: 1.8;
+}
+.md-body h1, .md-body h2, .md-body h3 { color: #e2e8f0; margin: 1.2rem 0 0.5rem; }
+.md-body h1 { font-size: 1.3rem; border-bottom: 1px solid #334155; padding-bottom: 0.4rem; }
+.md-body h2 { font-size: 1.1rem; }
+.md-body h3 { font-size: 0.95rem; color: #94a3b8; }
+.md-body p { margin: 0.5rem 0; }
+.md-body ul, .md-body ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+.md-body li { margin: 0.25rem 0; }
+.md-body code {
+    background: #0f172a;
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.85rem;
+    color: #7dd3fc;
+}
+.md-body pre {
+    background: #0f172a;
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+}
+.md-body pre code { padding: 0; background: none; }
+.md-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.75rem 0;
+    font-size: 0.85rem;
+}
+.md-body th, .md-body td {
+    border: 1px solid #334155;
+    padding: 0.4rem 0.75rem;
+}
+.md-body th { background: #0f172a; color: #94a3b8; }
+.md-body hr { border: none; border-top: 1px solid #334155; margin: 1rem 0; }
+.actions { margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: center; }
+
+/* ── Fix Terminal Modal ─────────────────────────────── */
+#fix-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+#fix-modal-overlay.open { display: flex; }
+#fix-modal {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 900px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    overflow: hidden;
+}
+#fix-modal-header {
+    padding: 0.9rem 1.25rem;
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0a1628;
+    flex-shrink: 0;
+}
+#fix-modal-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+#fix-modal-dots { display: flex; gap: 6px; }
+#fix-modal-dots span {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    display: block;
+}
+#fix-modal-close {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+#fix-modal-close:hover { color: #e2e8f0; background: #1e293b; }
+#fix-terminal {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.2rem;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    background: #020817;
+    color: #cbd5e1;
+}
+#fix-terminal::-webkit-scrollbar { width: 6px; }
+#fix-terminal::-webkit-scrollbar-track { background: transparent; }
+#fix-terminal::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+.t-info    { color: #475569; }
+.t-tool    { color: #38bdf8; font-weight: 600; margin-top: 0.5rem; }
+.t-output  { color: #64748b; white-space: pre-wrap; word-break: break-all; margin: 0.2rem 0 0.5rem 1rem; border-left: 2px solid #1e293b; padding-left: 0.75rem; }
+.t-ai      { color: #e2e8f0; white-space: pre-wrap; margin-top: 0.5rem; }
+.t-cursor  { display: inline-block; width: 7px; height: 1em; background: #38bdf8; animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 1px; }
+.t-success { color: #4ade80; font-weight: 600; margin-top: 0.75rem; }
+.t-fail    { color: #f87171; font-weight: 600; margin-top: 0.75rem; }
+.t-error   { color: #f87171; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+#fix-modal-footer {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0a1628;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: #64748b;
+    gap: 1rem;
+}
+#fix-footer-status { flex: 1; }
+#fix-footer-actions { display: flex; gap: 0.5rem; }
+#fix-btn-close-modal { display: none; }
+{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    {% if report.title() %}
+    <div>
+        <h2 style="font-size:1.3rem;font-weight:700;color:#e2e8f0;font-family:inherit;word-break:normal;">{{ report.title() }}</h2>
+        <div style="font-size:0.75rem;color:#475569;font-family:monospace;margin-top:0.3rem;">{{ report.id }}</div>
+    </div>
+    {% else %}
+    <h2>{{ report.id }}</h2>
+    {% endif %}
+</div>
+
+<div class="report-meta-row">
+    <span class="badge badge-{{ report.status.lower().replace('_', '-') }}">{{ report.status }}</span>
+    {% if report.created_at %}
+    <span>Created on {{ report.created_at.strftime('%m/%d/%Y %H:%M UTC') }}</span>
+    {% endif %}
+    <span>{{ report.event_uids | length }} event(s)</span>
+</div>
+
+{% if request.query_params.get('msg') == 'fix_started' %}
+<div style="background:#065f46;border:1px solid #34d399;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:#a7f3d0;">
+    ⚡ Fix started in the background. Refresh the page in a few moments to see the result.
+</div>
+{% elif request.query_params.get('msg') == 'already_running' %}
+<div style="background:#1c1917;border:1px solid #78716c;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:#d6d3d1;">
+    This report is already being fixed or has been completed.
+</div>
+{% endif %}
+
+{% if report.status in ('COMPLETE', 'FIX_FAILED') %}
+<div class="actions">
+    <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back</a>
+    <button id="execute-fix-btn" class="btn btn-primary" onclick="openFixTerminal('{{ report.id }}')">⚡ Execute Fix</button>
+</div>
+{% elif report.status == 'FIXING' %}
+<div class="actions">
+    <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back</a>
+    <button class="btn btn-primary" disabled style="opacity:0.5;cursor:not-allowed;">⏳ Fixing...</button>
+</div>
+{% else %}
+<div class="actions">
+    <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back</a>
+</div>
+{% endif %}
+
+<div class="md-body">
+{% if html_content %}
+{{ html_content | safe }}
+{% else %}
+<p style="color:#64748b;">This report has no content yet (analysis in progress or inconclusive).</p>
+{% endif %}
+</div>
+
+{% if report.event_uids %}
+<details style="margin-top:1.5rem;">
+    <summary style="cursor:pointer;color:#64748b;font-size:0.8rem;">Event UIDs ({{ report.event_uids|length }})</summary>
+    <pre style="background:#1e293b;border-radius:6px;padding:0.75rem;font-size:0.75rem;margin-top:0.5rem;">{% for uid in report.event_uids %}{{ uid }}
+{% endfor %}</pre>
+</details>
+{% endif %}
+
+<!-- ── Fix Execution Terminal Modal ─────────────────── -->
+<div id="fix-modal-overlay" role="dialog" aria-modal="true" aria-label="Fix execution terminal">
+    <div id="fix-modal">
+        <div id="fix-modal-header">
+            <div id="fix-modal-dots">
+                <span style="background:#ef4444;"></span>
+                <span style="background:#f59e0b;"></span>
+                <span style="background:#22c55e;"></span>
+            </div>
+            <h3><span id="fix-modal-title">⚡ Fix Execution — Kubernetes AIOps</span></h3>
+            <button id="fix-modal-close" onclick="closeFixTerminal()" title="Close">✕</button>
+        </div>
+        <div id="fix-terminal"></div>
+        <div id="fix-modal-footer">
+            <span id="fix-footer-status">Waiting to start…</span>
+            <div id="fix-footer-actions">
+                <button id="fix-btn-close-modal" class="btn btn-primary" onclick="closeAndReload()">✓ Close &amp; Reload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+(function () {
+    'use strict';
+
+    let evtSource = null;
+    let currentAiEl = null;
+    let cursorEl = null;
+
+    function esc(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function scrollDown() {
+        const t = document.getElementById('fix-terminal');
+        t.scrollTop = t.scrollHeight;
+    }
+
+    function addLine(cls, html) {
+        currentAiEl = null;
+        cursorEl = null;
+        const div = document.createElement('div');
+        div.className = cls;
+        div.innerHTML = html;
+        document.getElementById('fix-terminal').appendChild(div);
+        scrollDown();
+        return div;
+    }
+
+    function handleEvent(ev) {
+        const footer = document.getElementById('fix-footer-status');
+
+        switch (ev.type) {
+            case 'info':
+                addLine('t-info', '&#x2139;&#xFE0F; ' + esc(ev.content));
+                break;
+
+            case 'tool_start': {
+                const args = ev.args ? '<span style="color:#94a3b8;font-weight:400;">  ' + esc(ev.args) + '</span>' : '';
+                addLine('t-tool', '&#x25B6; ' + esc(ev.name) + args);
+                footer.textContent = 'Running: ' + ev.name + '…';
+                break;
+            }
+
+            case 'tool_end': {
+                const out = ev.output || '(no output)';
+                addLine('t-output', esc(out));
+                break;
+            }
+
+            case 'ai_token': {
+                const terminal = document.getElementById('fix-terminal');
+                if (!currentAiEl) {
+                    currentAiEl = document.createElement('div');
+                    currentAiEl.className = 't-ai';
+                    cursorEl = document.createElement('span');
+                    cursorEl.className = 't-cursor';
+                    terminal.appendChild(currentAiEl);
+                    terminal.appendChild(cursorEl);
+                    footer.textContent = 'Agent reasoning…';
+                }
+                currentAiEl.textContent += ev.content;
+                scrollDown();
+                break;
+            }
+
+            case 'done':
+                if (cursorEl) { cursorEl.remove(); cursorEl = null; }
+                currentAiEl = null;
+                if (ev.success) {
+                    addLine('t-success', '&#x2713; Fix completed successfully — status updated to FIXED.');
+                } else {
+                    addLine('t-fail', '&#x26A0; Fix agent did not confirm SUCCESS. Review the output above.');
+                }
+                footer.textContent = ev.success ? 'Status: FIXED' : 'Status: FIX_FAILED';
+                break;
+
+            case 'status_update':
+                if (evtSource) { evtSource.close(); evtSource = null; }
+                document.getElementById('fix-btn-close-modal').style.display = 'inline-block';
+                footer.textContent = 'Done — ' + (ev.status || '');
+                break;
+
+            case 'error':
+                if (cursorEl) { cursorEl.remove(); cursorEl = null; }
+                currentAiEl = null;
+                addLine('t-error', '&#x2717; ' + esc(ev.content || 'Unknown error'));
+                footer.textContent = 'Error occurred';
+                if (evtSource) { evtSource.close(); evtSource = null; }
+                document.getElementById('fix-btn-close-modal').style.display = 'inline-block';
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    window.openFixTerminal = function (reportId) {
+        const overlay = document.getElementById('fix-modal-overlay');
+        const terminal = document.getElementById('fix-terminal');
+        const footer = document.getElementById('fix-footer-status');
+        const closeBtn = document.getElementById('fix-btn-close-modal');
+        const execBtn = document.getElementById('execute-fix-btn');
+
+        terminal.innerHTML = '';
+        currentAiEl = null;
+        cursorEl = null;
+        footer.textContent = 'Connecting…';
+        closeBtn.style.display = 'none';
+        overlay.classList.add('open');
+
+        if (execBtn) { execBtn.disabled = true; execBtn.textContent = '⏳ Fixing…'; }
+
+        evtSource = new EventSource('/reports/' + reportId + '/fix/stream');
+
+        evtSource.onmessage = function (e) {
+            try {
+                handleEvent(JSON.parse(e.data));
+            } catch (_) { /* ignore malformed */ }
+        };
+
+        evtSource.onerror = function () {
+            if (evtSource && evtSource.readyState === EventSource.CLOSED) return;
+            addLine('t-error', '&#x26A0; Connection lost. The fix may still be running on the server.');
+            if (evtSource) { evtSource.close(); evtSource = null; }
+            document.getElementById('fix-footer-status').textContent = 'Connection closed';
+            document.getElementById('fix-btn-close-modal').style.display = 'inline-block';
+        };
+    };
+
+    window.closeFixTerminal = function () {
+        if (evtSource) { evtSource.close(); evtSource = null; }
+        document.getElementById('fix-modal-overlay').classList.remove('open');
+    };
+
+    window.closeAndReload = function () {
+        closeFixTerminal();
+        window.location.reload();
+    };
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeFixTerminal(); }
+    });
+})();
+</script>
+{% endblock %}

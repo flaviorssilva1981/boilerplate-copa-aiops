@@ -45,12 +45,17 @@
             font-weight: 600;
             text-transform: uppercase;
         }
-        .badge-processing { background: #1e3a5f; color: #60a5fa; }
+        .badge-analyzing { background: #1e3a5f; color: #60a5fa; }
         .badge-complete { background: #14532d; color: #4ade80; }
         .badge-incomplete { background: #7c2d12; color: #fb923c; }
-        .badge-executing { background: #3b0764; color: #c084fc; }
-        .badge-executed { background: #052e16; color: #22c55e; }
-        .badge-execution-failed, .badge-execution_failed { background: #450a0a; color: #f87171; }
+        .badge-fixing { background: #3b0764; color: #c084fc; }
+        .badge-fixed { background: #052e16; color: #22c55e; }
+        .badge-fix-failed { background: #450a0a; color: #f87171; }
+        .badge-critical { background: #450a0a; color: #f87171; }
+        .badge-high { background: #431407; color: #fb923c; }
+        .badge-medium { background: #422006; color: #fbbf24; }
+        .badge-low { background: #1a2e05; color: #86efac; }
+        .badge-unknown { background: #1e293b; color: #64748b; }
         .btn {
             display: inline-block;
             padding: 0.5rem 1.25rem;
@@ -74,14 +79,15 @@
 </head>
 <body>
     <header>
-        <a href="/"><h1>My Agent App</h1></a>
+        <a href="/"><h1>Kubernetes AIOps</h1></a>
         <nav>
-            <a href="/">Tasks</a>
-            <a href="/api/health">Health</a>
+            <a href="/reports">Reports</a>
+            <a href="/health">Health</a>
         </nav>
     </header>
     <main>
         {% block content %}{% endblock %}
     </main>
+    {% block extra_script %}{% endblock %}
 </body>
 </html>

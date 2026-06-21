@@ -1,0 +1,11 @@
+{
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportUnknownMemberType": "none",
+  "exclude": [
+    "deploy/**",
+    ".venv/**",
+    "**/__pycache__/**"
+  ]
+}

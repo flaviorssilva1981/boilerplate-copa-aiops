@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  aiops.server: |
+    dublinconsulting.com.br {
+      hosts {
+        136.248.122.106 aiops.dublinconsulting.com.br
+        fallthrough
+      }
+      forward . /etc/resolv.conf
+    }

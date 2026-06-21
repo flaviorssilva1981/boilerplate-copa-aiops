@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title | default("Erro") }} - My Agent App{% endblock %}
+{% block title %}Error — Kubernetes AIOps{% endblock %}
 
 {% block content %}
 <div class="empty-state">
-    <h2 style="margin-bottom: 1rem; font-size: 2rem;">{{ status_code | default("Erro") }}</h2>
-    <p>{{ message | default("Ocorreu um erro inesperado.") }}</p>
-    <a href="/" class="btn btn-primary" style="margin-top: 2rem;">Voltar para tasks</a>
+    <h2 style="margin-bottom: 0.75rem; color: #f87171;">Error</h2>
+    <p>{{ message }}</p>
+    <br>
+    <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back to Reports</a>
 </div>
 {% endblock %}

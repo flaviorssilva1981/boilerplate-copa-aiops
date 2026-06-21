@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Reports — Kubernetes AIOps{% endblock %}
+
+{% block extra_style %}
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+.page-header h2 { font-size: 1.25rem; font-weight: 600; }
+.report-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.report-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s;
+}
+.report-card:hover { border-color: #64748b; }
+.report-meta { flex: 1; min-width: 0; }
+.report-meta .title {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.report-meta .sub {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}
+.report-right { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Analysis Reports</h2>
+</div>
+
+{% if reports %}
+<div class="report-list">
+{% for r in reports %}
+<a class="report-card" href="/reports/{{ r.id }}">
+    <div class="report-meta">
+        <div class="title">
+            {% if r.title() %}{{ r.title() }}{% else %}<span style="color:#64748b;font-style:italic;">Untitled</span>{% endif %}
+        </div>
+        <div class="sub">{{ r.created_at.strftime('%m/%d/%Y %H:%M UTC') if r.created_at else '—' }} &nbsp;·&nbsp; {{ r.event_uids | length }} event(s) &nbsp;·&nbsp; <span style="font-family:monospace;font-size:0.7rem;">{{ r.id }}</span></div>
+    </div>
+    <div class="report-right">
+        <span class="badge badge-{{ r.severity().lower() if r.severity() != '—' else 'unknown' }}">{{ r.severity() }}</span>
+        <span class="badge badge-{{ r.status.lower().replace('_', '-') }}">{{ r.status }}</span>
+    </div>
+</a>
+{% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <h2 style="margin-bottom:0.5rem;">No reports found</h2>
+    <p>The collector is active. Reports will appear here after the next Warning event analysis.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,10 +1,133 @@
 {% extends "base.html" %}
 
-{% block title %}My Agent App{% endblock %}
+{% block title %}FastAPI + LangChain Agent + MCP{% endblock %}
+
+{% block extra_style %}
+.home-hero {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+}
+.home-hero h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 0.6rem;
+}
+.home-hero p {
+    color: #64748b;
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
+}
+.arch-diagram {
+    display: block;
+    max-width: 100%;
+    width: 860px;
+    margin: 0 auto;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+}
+.home-links {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+.arch-summary {
+    max-width: 860px;
+    margin: 2.5rem auto 0;
+    text-align: left;
+}
+.arch-summary h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 1rem;
+}
+.arch-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.arch-step {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+}
+.arch-step .step-num {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #3b82f6;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.35rem;
+}
+.arch-step .step-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 0.4rem;
+}
+.arch-step .step-desc {
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.6;
+}
+.arch-note {
+    background: #0f172a;
+    border: 1px solid #1e3a5f;
+    border-radius: 8px;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.8rem;
+    color: #60a5fa;
+    line-height: 1.7;
+}
+.arch-note strong { color: #93c5fd; }
+{% endblock %}
 
 {% block content %}
-<div class="empty-state">
-    <h2 style="margin-bottom: 1rem;">My Agent App</h2>
-    <p>Agente inteligente com FastAPI + LangChain + MCP</p>
+<div class="home-hero">
+    <h2>FastAPI + LangChain Agent + MCP</h2>
+    <p>AIOps Platform — automated detection, diagnosis and remediation of Kubernetes issues</p>
+
+    <img src="/static/architecture.jpg" alt="System architecture" class="arch-diagram" />
+
+    <div class="home-links">
+        <a href="/reports" class="btn btn-primary">View Reports</a>
+        <a href="/health" class="btn btn-primary" style="background:#334155;">System Health</a>
+    </div>
+</div>
+
+<div class="arch-summary">
+    <h3>How it works</h3>
+    <div class="arch-steps">
+        <div class="arch-step">
+            <div class="step-num">Step 1</div>
+            <div class="step-title">Event Collection</div>
+            <div class="step-desc">Every 3 minutes the <strong>Event Collector</strong> watches all Kubernetes Warning events across the cluster. New events are deduplicated against existing reports before being queued for analysis.</div>
+        </div>
+        <div class="arch-step">
+            <div class="step-num">Step 2</div>
+            <div class="step-title">Root Cause Analysis</div>
+            <div class="step-desc">The <strong>RCA Agent</strong> (LangChain + Claude Sonnet 4.5 via Requesty AI) connects to the MCP Server and uses <code>kubectl get</code>, <code>describe</code>, and <code>logs</code> to investigate affected resources and write a structured diagnostic report.</div>
+        </div>
+        <div class="arch-step">
+            <div class="step-num">Step 3</div>
+            <div class="step-title">Report Persistence</div>
+            <div class="step-desc">Each identified problem is saved as a report in <strong>PostgreSQL</strong> with severity, affected resources, root cause, evidence, and a suggested fix command. Reports are accessible via the web UI.</div>
+        </div>
+        <div class="arch-step">
+            <div class="step-num">Step 4</div>
+            <div class="step-title">Automated Remediation</div>
+            <div class="step-desc">For COMPLETE reports, you can trigger the <strong>Fix Agent</strong>. It reads the diagnosis, executes the suggested kubectl commands via MCP Server, verifies the result, and updates the report to FIXED or FIX_FAILED.</div>
+        </div>
+    </div>
+    <div class="arch-note">
+        <strong>Stack:</strong> FastAPI (API + Web UI) &nbsp;·&nbsp; LangChain + LangGraph (AI agents) &nbsp;·&nbsp; MCP Server Kubernetes (kubectl tools over HTTP) &nbsp;·&nbsp; Claude Sonnet 4.5 via Requesty AI (LLM) &nbsp;·&nbsp; PostgreSQL (report storage) &nbsp;·&nbsp; Deployed on OKE (Oracle Kubernetes Engine)
+    </div>
 </div>
 {% endblock %}
