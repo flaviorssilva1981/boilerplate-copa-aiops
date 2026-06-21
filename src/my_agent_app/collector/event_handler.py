@@ -5,7 +5,7 @@ import os
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, any_, cast, or_, select, update
+from sqlalchemy import and_, cast, select, update
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.types import String

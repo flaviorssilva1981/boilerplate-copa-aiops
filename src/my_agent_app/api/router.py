@@ -167,8 +167,14 @@ async def cluster_metrics():
                 if has_usage and total_mem_alloc
                 else None
             ),
-            "cpu_detail":   f"{int(total_cpu_used)}m / {int(total_cpu_alloc)}m" if has_usage else None,
-            "mem_detail":   f"{_fmt_mem(int(total_mem_used))} / {_fmt_mem(int(total_mem_alloc))}" if has_usage else None,
+            "cpu_detail": (
+                f"{int(total_cpu_used)}m / {int(total_cpu_alloc)}m" if has_usage else None
+            ),
+            "mem_detail": (
+                f"{_fmt_mem(int(total_mem_used))} / {_fmt_mem(int(total_mem_alloc))}"
+                if has_usage
+                else None
+            ),
             "pods_total":   pods_total,
             "pods_running": pods_running,
             "pods_cap":     total_pods_cap,
@@ -179,7 +185,7 @@ async def cluster_metrics():
 
     try:
         return await asyncio.wait_for(asyncio.to_thread(_fetch_all), timeout=12)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {"error": "Kubernetes API request timed out", "nodes": [], "pods_by_phase": {}}
     except RuntimeError as exc:
         return {"error": str(exc), "nodes": [], "pods_by_phase": {}}
