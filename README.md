@@ -210,7 +210,8 @@ The `deploy/oke-deploy.ps1` script (PowerShell) packages the source, creates the
 
 ```powershell
 $env:ANTHROPIC_API_KEY = "<your-requesty-key>"
-$env:BASIC_AUTH_PASSWORD = "Manager@2026"
+$env:BASIC_AUTH_PASSWORD = "<your-web-ui-password>"
+$env:POSTGRES_PASSWORD   = "<your-db-password>"
 .\deploy\oke-deploy.ps1
 ```
 
