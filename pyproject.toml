@@ -37,5 +37,12 @@ src = ["src", "deploy"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["my_agent_app"]
+
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B310"]

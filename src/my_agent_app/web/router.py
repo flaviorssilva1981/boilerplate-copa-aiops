@@ -1,4 +1,3 @@
-import asyncio
 import json as _json
 import logging
 import os
@@ -40,7 +39,7 @@ async def health_page(request: Request):
             report_stats = [{"status": row.status, "count": row.count} for row in result.all()]
             db_ok = True
     except SQLAlchemyError:
-        pass
+        logger.warning("Could not load report stats for health page", exc_info=True)
 
     return templates.TemplateResponse(
         request,
