@@ -100,6 +100,16 @@ def _event_to_dict(event: dict) -> dict | None:
     }
 
 
+def _is_trivy_scan_noise(event: dict) -> bool:
+    """Skip Trivy operator scan-job failures — not actionable cluster incidents."""
+    if event.get("reason") != "BackoffLimitExceeded":
+        return False
+    involved = event.get("involved_object") or {}
+    if involved.get("kind") != "Job":
+        return False
+    return (involved.get("name") or "").startswith("scan-vulnerabilityreport-")
+
+
 def _list_warning_events_since(watermark: datetime) -> list[dict]:
     api = client.EventsV1Api()
 
@@ -130,6 +140,8 @@ def _list_warning_events_since(watermark: datetime) -> list[dict]:
 
         payload_item = _event_to_dict(event)
         if payload_item is not None:
+            if _is_trivy_scan_noise(payload_item):
+                continue
             collected.append(payload_item)
 
     return collected
