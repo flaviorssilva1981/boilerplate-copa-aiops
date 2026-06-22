@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#34d399"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="780" fill="url(#bg)"/>
+  <text x="600" y="42" text-anchor="middle" fill="#e2e8f0" font-size="26" font-weight="700">Kubernetes AIOps — System Architecture</text>
+  <text x="600" y="68" text-anchor="middle" fill="#64748b" font-size="14">Detect · Diagnose · Review · Fix · FastAPI on Oracle OKE</text>
+
+  <!-- Kubernetes Cluster -->
+  <g filter="url(#shadow)">
+    <rect x="380" y="88" width="440" height="88" rx="12" fill="#334155" stroke="#64748b" stroke-width="1.5"/>
+    <text x="600" y="118" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="700">Kubernetes Cluster (OKE)</text>
+    <text x="600" y="142" text-anchor="middle" fill="#cbd5e1" font-size="13">Pods · Deployments · Warning Events</text>
+    <text x="600" y="162" text-anchor="middle" fill="#94a3b8" font-size="12">metrics-server · events.k8s.io</text>
+  </g>
+
+  <line x1="600" y1="176" x2="600" y2="210" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="612" y="200" fill="#94a3b8" font-size="11">Warning events (every 3 min)</text>
+
+  <!-- Event Collector -->
+  <g filter="url(#shadow)">
+    <rect x="420" y="210" width="360" height="78" rx="10" fill="#6d28d9" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="600" y="248" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">Event Collector</text>
+    <text x="600" y="272" text-anchor="middle" fill="#ddd6fe" font-size="12">K8s Python SDK · dedup · async dispatch</text>
+  </g>
+
+  <line x1="600" y1="288" x2="600" y2="318" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- RCA Agent -->
+  <g filter="url(#shadow)">
+    <rect x="130" y="318" width="300" height="96" rx="10" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1.5"/>
+    <text x="280" y="358" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">RCA Agent</text>
+    <text x="280" y="382" text-anchor="middle" fill="#dbeafe" font-size="12">LangChain + Claude Sonnet</text>
+    <text x="280" y="402" text-anchor="middle" fill="#93c5fd" font-size="11">read-only MCP tools</text>
+  </g>
+
+  <!-- Web Interface -->
+  <g filter="url(#shadow)">
+    <rect x="770" y="318" width="300" height="96" rx="10" fill="#0f766e" stroke="#2dd4bf" stroke-width="1.5"/>
+    <text x="920" y="358" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">Web Interface</text>
+    <text x="920" y="382" text-anchor="middle" fill="#ccfbf1" font-size="12">FastAPI + Jinja2 · Health Dashboard</text>
+    <text x="920" y="402" text-anchor="middle" fill="#5eead4" font-size="11">list reports · Execute Fix · SSE stream</text>
+  </g>
+
+  <!-- Fix Agent -->
+  <g filter="url(#shadow)">
+    <rect x="420" y="520" width="360" height="96" rx="10" fill="#15803d" stroke="#4ade80" stroke-width="1.5"/>
+    <text x="600" y="560" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">Fix Agent</text>
+    <text x="600" y="584" text-anchor="middle" fill="#dcfce7" font-size="12">LangChain + Claude Sonnet</text>
+    <text x="600" y="604" text-anchor="middle" fill="#86efac" font-size="11">write MCP tools · human-triggered</text>
+  </g>
+
+  <!-- MCP Server -->
+  <g filter="url(#shadow)">
+    <rect x="130" y="520" width="220" height="96" rx="10" fill="#c2410c" stroke="#fb923c" stroke-width="1.5"/>
+    <text x="240" y="548" text-anchor="middle" fill="#ffedd5" font-size="14" font-weight="700">MCP Server</text>
+    <text x="240" y="568" text-anchor="middle" fill="#fed7aa" font-size="12">Kubernetes</text>
+    <text x="240" y="588" text-anchor="middle" fill="#fdba74" font-size="11">kubectl_get · describe · logs</text>
+    <text x="240" y="604" text-anchor="middle" fill="#fdba74" font-size="11">apply · patch · rollout · scale</text>
+  </g>
+
+  <!-- PostgreSQL -->
+  <g filter="url(#shadow)">
+    <ellipse cx="980" cy="568" rx="72" ry="28" fill="#475569" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect x="908" y="568" width="144" height="56" fill="#475569" stroke="#94a3b8" stroke-width="1.5"/>
+    <ellipse cx="980" cy="624" rx="72" ry="28" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="980" y="574" text-anchor="middle" fill="#f1f5f9" font-size="14" font-weight="700">PostgreSQL</text>
+    <text x="980" y="598" text-anchor="middle" fill="#cbd5e1" font-size="11">reports · status · event UIDs</text>
+  </g>
+
+  <!-- Requesty AI -->
+  <g filter="url(#shadow)">
+    <rect x="130" y="660" width="220" height="72" rx="36" fill="#be185d" stroke="#f472b6" stroke-width="1.5"/>
+    <text x="240" y="688" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">Requesty AI</text>
+    <text x="240" y="710" text-anchor="middle" fill="#fbcfe8" font-size="12">Claude Sonnet 4.5</text>
+  </g>
+
+  <!-- User -->
+  <g>
+    <circle cx="920" cy="700" r="22" fill="#334155" stroke="#64748b" stroke-width="1.5"/>
+    <text x="920" y="706" text-anchor="middle" fill="#e2e8f0" font-size="18">??</text>
+    <text x="920" y="742" text-anchor="middle" fill="#94a3b8" font-size="12">Operator</text>
+  </g>
+
+  <!-- Flow arrows -->
+  <path d="M 430 390 L 900 390 L 900 540" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="660" y="382" fill="#38bdf8" font-size="11">save reports</text>
+
+  <path d="M 920 414 L 920 540" fill="none" stroke="#2dd4bf" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="932" y="478" fill="#2dd4bf" font-size="11">read reports</text>
+
+  <path d="M 850 414 L 680 414 L 680 520" fill="none" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="720" y="406" fill="#34d399" font-size="11">Execute Fix (SSE)</text>
+
+  <path d="M 240 414 L 240 520" fill="none" stroke="#60a5fa" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="252" y="472" fill="#60a5fa" font-size="10">read-only</text>
+
+  <path d="M 420 568 L 350 568" fill="none" stroke="#4ade80" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="355" y="558" fill="#4ade80" font-size="10">read + write</text>
+
+  <path d="M 240 520 L 240 480 L 380 480 L 380 176" fill="none" stroke="#fb923c" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <text x="300" y="468" fill="#fb923c" font-size="10">kubectl via MCP</text>
+
+  <path d="M 500 210 L 500 176" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="420" y="192" fill="#a78bfa" font-size="10">K8s Events API</text>
+
+  <path d="M 1000 318 L 1080 250 L 820 130" fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text x="1040" y="240" fill="#2dd4bf" font-size="10">health metrics (direct SA)</text>
+
+  <line x1="920" y1="678" x2="920" y2="414" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="932" y="650" fill="#94a3b8" font-size="11">browser</text>
+
+  <path d="M 280 414 L 280 660" fill="none" stroke="#f472b6" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M 520 616 L 350 680" fill="none" stroke="#f472b6" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+  <text x="290" y="640" fill="#f472b6" font-size="10">LLM calls</text>
+
+  <path d="M 780 568 L 908 568" fill="none" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="820" y="558" fill="#34d399" font-size="10">FIXED / FIX_FAILED</text>
+
+  <!-- Legend -->
+  <rect x="40" y="680" width="320" height="78" rx="8" fill="#1e293b" stroke="#334155"/>
+  <text x="56" y="702" fill="#e2e8f0" font-size="12" font-weight="700">AIOps loop</text>
+  <text x="56" y="722" fill="#94a3b8" font-size="11">Event Collector ? RCA Agent ? Web Interface ? Fix Agent</text>
+  <text x="56" y="742" fill="#64748b" font-size="10">Dashed = direct K8s API · Solid = agent / UI flow</text>
+</svg>
