@@ -337,9 +337,8 @@ async def stream_gitops_fix_report(request: Request, report_id: uuid.UUID):
             success = bool(full_output) and "SUCCESS" in full_output.upper()
         new_status = ReportStatus.CORRIGIDO if success else ReportStatus.FALHA_CORRECAO
 
-        if full_output.strip():
-            if pr_url and pr_url not in full_output:
-                full_output += f"\n\n**PR:** {pr_url}"
+        if full_output.strip() and pr_url and pr_url not in full_output:
+            full_output += f"\n\n**PR:** {pr_url}"
 
         try:
             async with sessionmaker() as session:
