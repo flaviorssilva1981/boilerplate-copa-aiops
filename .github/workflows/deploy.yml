@@ -155,33 +155,14 @@ jobs:
             --type=merge \
             -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\",\"GITHUB_TOKEN\":\"${{ secrets.GITOPS_GITHUB_TOKEN }}\"}}"
 
-      - name: Check if image changed
-        id: check
+      - name: Apply deployment manifest (env vars + service)
         run: |
-          CURRENT=$(kubectl -n ${{ env.NAMESPACE }} \
-            get deployment/${{ env.DEPLOYMENT }} \
-            -o jsonpath='{.spec.template.spec.containers[?(@.name=="${{ env.CONTAINER }}")].image}' \
-            2>/dev/null || echo "not-found")
-          NEW="${{ needs.build.outputs.image_tag }}"
-          echo "current_image=${CURRENT}" >> "$GITHUB_OUTPUT"
-          echo "new_image=${NEW}"          >> "$GITHUB_OUTPUT"
-          if [ "${CURRENT}" = "${NEW}" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Image unchanged — skipping rollout"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "Deploying ${NEW} (was: ${CURRENT})"
-          fi
-
-      - name: Update deployment image
-        if: steps.check.outputs.skip == 'false'
-        run: |
+          kubectl apply -f k8s/aiops/app.yaml
           kubectl -n ${{ env.NAMESPACE }} set image \
             deployment/${{ env.DEPLOYMENT }} \
             ${{ env.CONTAINER }}=${{ needs.build.outputs.image_tag }}
 
       - name: Wait for rollout to complete
-        if: steps.check.outputs.skip == 'false'
         run: |
           kubectl -n ${{ env.NAMESPACE }} rollout status \
             deployment/${{ env.DEPLOYMENT }} \
@@ -194,7 +175,6 @@ jobs:
             -o wide
 
       - name: Smoke test (liveness probe)
-        if: steps.check.outputs.skip == 'false'
         run: |
           sleep 10
           POD=$(kubectl -n ${{ env.NAMESPACE }} get pods \
