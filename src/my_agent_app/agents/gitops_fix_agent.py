@@ -106,11 +106,7 @@ async def stream_gitops_fix(report_markdown: str, report_id: str) -> AsyncGenera
         [
             SystemMessage(content=PLAN_SYSTEM_PROMPT),
             HumanMessage(
-                content=(
-                    "RCA report:\n\n"
-                    f"{report_markdown}\n\n"
-                    "Return the JSON plan object."
-                )
+                content=(f"RCA report:\n\n{report_markdown}\n\nReturn the JSON plan object.")
             ),
         ]
     )
