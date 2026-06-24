@@ -150,7 +150,11 @@
 .t-cursor  { display: inline-block; width: 7px; height: 1em; background: #38bdf8; animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 1px; }
 .t-success { color: #4ade80; font-weight: 600; margin-top: 0.75rem; }
 .t-fail    { color: #f87171; font-weight: 600; margin-top: 0.75rem; }
+.t-step    { color: #a78bfa; margin-top: 0.35rem; }
 .t-error   { color: #f87171; }
+.btn-gitops { background: #7c3aed; color: #fff; }
+.btn-gitops:hover { background: #6d28d9; }
+.btn-gitops:disabled { opacity: 0.5; cursor: not-allowed; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 #fix-modal-footer {
     padding: 0.75rem 1.25rem;
@@ -202,7 +206,10 @@
 {% if report.status in ('COMPLETE', 'FIX_FAILED') %}
 <div class="actions">
     <a href="/reports" class="btn btn-primary" style="background:#334155;">← Back</a>
-    <button id="execute-fix-btn" class="btn btn-primary" onclick="openFixTerminal('{{ report.id }}')">⚡ Execute Fix</button>
+    {% if gitops_enabled %}
+    <button id="gitops-fix-btn" class="btn btn-gitops" onclick="openFixTerminal('{{ report.id }}', 'gitops')">🔀 Apply via GitOps</button>
+    {% endif %}
+    <button id="execute-fix-btn" class="btn btn-primary" onclick="openFixTerminal('{{ report.id }}', 'cluster')" title="Direct kubectl — may be reverted by Argo CD">⚡ Execute Fix (cluster)</button>
 </div>
 {% elif report.status == 'FIXING' %}
 <div class="actions">
@@ -292,6 +299,11 @@
         const footer = document.getElementById('fix-footer-status');
 
         switch (ev.type) {
+            case 'step':
+                addLine('t-step', '&#x25B8; ' + esc(ev.content));
+                footer.textContent = ev.content;
+                break;
+
             case 'info':
                 addLine('t-info', '&#x2139;&#xFE0F; ' + esc(ev.content));
                 break;
@@ -328,12 +340,23 @@
             case 'done':
                 if (cursorEl) { cursorEl.remove(); cursorEl = null; }
                 currentAiEl = null;
-                if (ev.success) {
-                    addLine('t-success', '&#x2713; Fix completed successfully — status updated to FIXED.');
-                } else {
-                    addLine('t-fail', '&#x26A0; Fix agent did not confirm SUCCESS. Review the output above.');
+                if (ev.pr_url) {
+                    addLine(
+                        't-success',
+                        '&#x2713; Pull request: <a href="' + esc(ev.pr_url) + '" target="_blank" rel="noopener" style="color:#a78bfa;">'
+                        + esc(ev.pr_url) + '</a>'
+                    );
                 }
-                footer.textContent = ev.success ? 'Status: FIXED' : 'Status: FIX_FAILED';
+                if (ev.success) {
+                    addLine('t-success', '&#x2713; GitOps fix completed — status updated to FIXED.');
+                    footer.textContent = 'Status: FIXED';
+                } else if (ev.pr_url) {
+                    addLine('t-info', 'Awaiting manual PR review and merge to main.');
+                    footer.textContent = 'PR created — review required';
+                } else {
+                    addLine('t-fail', '&#x26A0; Fix did not confirm SUCCESS. Review the output above.');
+                    footer.textContent = 'Status: FIX_FAILED';
+                }
                 break;
 
             case 'status_update':
@@ -356,12 +379,16 @@
         }
     }
 
-    window.openFixTerminal = function (reportId) {
+    window.openFixTerminal = function (reportId, mode) {
+        mode = mode || 'cluster';
+        const isGitops = mode === 'gitops';
         const overlay = document.getElementById('fix-modal-overlay');
         const terminal = document.getElementById('fix-terminal');
         const footer = document.getElementById('fix-footer-status');
         const closeBtn = document.getElementById('fix-btn-close-modal');
         const execBtn = document.getElementById('execute-fix-btn');
+        const gitopsBtn = document.getElementById('gitops-fix-btn');
+        const modalTitle = document.getElementById('fix-modal-title');
 
         terminal.innerHTML = '';
         currentAiEl = null;
@@ -370,9 +397,24 @@
         closeBtn.style.display = 'none';
         overlay.classList.add('open');
 
-        if (execBtn) { execBtn.disabled = true; execBtn.textContent = '⏳ Fixing…'; }
+        modalTitle.textContent = isGitops
+            ? '🔀 GitOps Fix — GitHub PR'
+            : '⚡ Fix Execution — Kubernetes AIOps';
 
-        evtSource = new EventSource('/reports/' + reportId + '/fix/stream');
+        if (execBtn) {
+            execBtn.disabled = true;
+            execBtn.textContent = isGitops ? execBtn.textContent : '⏳ Fixing…';
+        }
+        if (gitopsBtn) {
+            gitopsBtn.disabled = true;
+            gitopsBtn.textContent = isGitops ? '⏳ Applying via GitOps…' : gitopsBtn.textContent;
+        }
+
+        const streamUrl = isGitops
+            ? '/reports/' + reportId + '/gitops/stream'
+            : '/reports/' + reportId + '/fix/stream';
+
+        evtSource = new EventSource(streamUrl);
 
         evtSource.onmessage = function (e) {
             try {

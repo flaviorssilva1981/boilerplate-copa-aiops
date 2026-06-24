@@ -153,7 +153,7 @@ jobs:
           # Patch DATABASE_URL, BASIC_AUTH_USER and BASIC_AUTH_PASSWORD into aiops-secrets
           kubectl -n ${{ env.NAMESPACE }} patch secret aiops-secrets \
             --type=merge \
-            -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\"}}"
+            -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\",\"GITHUB_TOKEN\":\"${{ secrets.GITOPS_GITHUB_TOKEN }}\"}}"
 
       - name: Check if image changed
         id: check
