@@ -259,7 +259,9 @@ async def stream_gitops_fix_report(request: Request, report_id: uuid.UUID):
     if not gitops_configured():
 
         async def _not_configured():
-            yield _sse({"type": "error", "content": "GITHUB_TOKEN is not configured on the server."})
+            yield _sse(
+                {"type": "error", "content": "GITHUB_TOKEN is not configured on the server."}
+            )
 
         return StreamingResponse(
             _not_configured(), media_type="text/event-stream", headers=_sse_headers

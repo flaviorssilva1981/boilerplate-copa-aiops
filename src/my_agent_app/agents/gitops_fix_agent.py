@@ -35,7 +35,8 @@ Respond with ONLY a JSON object (no markdown fences) using this schema:
   "skip_reason": ""
 }}
 
-If the fix cannot be expressed as a GitOps manifest change, set skip=true and explain in skip_reason.
+If the fix cannot be expressed as a GitOps manifest change, set skip=true
+and explain in skip_reason.
 """
 
 PATCH_SYSTEM_PROMPT = """\

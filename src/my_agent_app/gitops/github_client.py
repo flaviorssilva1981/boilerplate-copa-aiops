@@ -128,7 +128,11 @@ class GitHubClient:
                     )
             response.raise_for_status()
             data = response.json()
-            return PullRequest(number=data["number"], html_url=data["html_url"], state=data["state"])
+            return PullRequest(
+                number=data["number"],
+                html_url=data["html_url"],
+                state=data["state"],
+            )
 
     async def merge_pull_request(
         self,
