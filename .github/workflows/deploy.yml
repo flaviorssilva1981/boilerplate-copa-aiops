@@ -155,9 +155,11 @@ jobs:
             --type=merge \
             -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\",\"GITHUB_TOKEN\":\"${{ secrets.GITOPS_GITHUB_TOKEN }}\"}}"
 
-      - name: Apply deployment manifest (env vars + service)
+      - name: Apply GitOps env vars to deployment
         run: |
-          kubectl apply -f k8s/aiops/app.yaml
+          kubectl -n ${{ env.NAMESPACE }} patch deployment ${{ env.DEPLOYMENT }} \
+            --type=strategic \
+            -p '{"spec":{"template":{"spec":{"containers":[{"name":"${{ env.CONTAINER }}","env":[{"name":"GITHUB_TOKEN","valueFrom":{"secretKeyRef":{"name":"aiops-secrets","key":"GITHUB_TOKEN","optional":true}}},{"name":"GITOPS_REPO","value":"flaviorssilva1981/guiadodevops"},{"name":"GITOPS_WORK_BRANCH","value":"dev"},{"name":"GITOPS_DEPLOY_BRANCH","value":"main"},{"name":"GITOPS_AUTO_MERGE","value":"false"}]}]}}}}'
           kubectl -n ${{ env.NAMESPACE }} set image \
             deployment/${{ env.DEPLOYMENT }} \
             ${{ env.CONTAINER }}=${{ needs.build.outputs.image_tag }}
