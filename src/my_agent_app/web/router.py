@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
+from my_agent_app.gitops.github_client import gitops_configured
 from my_agent_app.models import Report, ReportStatus
 
 logger = logging.getLogger(__name__)
@@ -103,7 +104,11 @@ async def report_detail(request: Request, report_id: uuid.UUID):
     return templates.TemplateResponse(
         request,
         "report_detail.html",
-        {"report": report, "html_content": html_content},
+        {
+            "report": report,
+            "html_content": html_content,
+            "gitops_enabled": gitops_configured(),
+        },
     )
 
 
@@ -233,6 +238,119 @@ async def stream_fix_report(request: Request, report_id: uuid.UUID):
                     await session.commit()
         except Exception:
             logger.exception("Failed to persist fix result for report %s", report_id)
+
+        yield _sse({"type": "status_update", "status": new_status, "success": success})
+
+    return StreamingResponse(_generate(), media_type="text/event-stream", headers=_sse_headers)
+
+
+@router.get("/reports/{report_id}/gitops/stream")
+async def stream_gitops_fix_report(request: Request, report_id: uuid.UUID):
+    """Server-Sent Events: GitOps fix via GitHub PR (no live kubectl writes)."""
+    _sse_headers = {
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+        "Connection": "keep-alive",
+    }
+
+    def _sse(event: dict) -> str:
+        return f"data: {_json.dumps(event)}\n\n"
+
+    if not gitops_configured():
+
+        async def _not_configured():
+            yield _sse(
+                {"type": "error", "content": "GITHUB_TOKEN is not configured on the server."}
+            )
+
+        return StreamingResponse(
+            _not_configured(), media_type="text/event-stream", headers=_sse_headers
+        )
+
+    try:
+        async with request.app.state.sessionmaker() as session:
+            report = await session.get(Report, report_id)
+    except SQLAlchemyError:
+
+        async def _db_err():
+            yield _sse({"type": "error", "content": "Database unavailable"})
+
+        return StreamingResponse(_db_err(), media_type="text/event-stream", headers=_sse_headers)
+
+    if report is None:
+
+        async def _not_found():
+            yield _sse({"type": "error", "content": f"Report {report_id} not found"})
+
+        return StreamingResponse(_not_found(), media_type="text/event-stream", headers=_sse_headers)
+
+    if report.status not in (ReportStatus.COMPLETO, ReportStatus.FALHA_CORRECAO):
+
+        async def _not_fixable():
+            yield _sse(
+                {
+                    "type": "error",
+                    "content": (
+                        "Report is not in a fixable state (must be COMPLETE or FIX_FAILED)."
+                    ),
+                }
+            )
+
+        return StreamingResponse(
+            _not_fixable(), media_type="text/event-stream", headers=_sse_headers
+        )
+
+    report_markdown = report.markdown or ""
+    sessionmaker = request.app.state.sessionmaker
+
+    async def _generate():
+        from my_agent_app.agents.gitops_fix_agent import stream_gitops_fix
+
+        async with sessionmaker() as session:
+            obj = await session.get(Report, report_id)
+            if obj:
+                obj.status = ReportStatus.CORRIGINDO
+                obj.updated_at = datetime.now(UTC)
+                await session.commit()
+
+        output_parts: list[str] = []
+        error_occurred = False
+        success = False
+        pr_url = ""
+
+        try:
+            async for event in stream_gitops_fix(report_markdown, str(report_id)):
+                yield _sse(event)
+                if event["type"] == "done":
+                    success = bool(event.get("success"))
+                    output_parts.append(event.get("output", ""))
+                    pr_url = event.get("pr_url", "")
+                elif event["type"] == "error":
+                    error_occurred = True
+        except Exception as exc:
+            logger.exception("SSE GitOps fix stream failed for report %s", report_id)
+            error_occurred = True
+            yield _sse({"type": "error", "content": str(exc)})
+
+        full_output = "\n".join(part for part in output_parts if part.strip())
+        if not success and not error_occurred:
+            success = bool(full_output) and "SUCCESS" in full_output.upper()
+        new_status = ReportStatus.CORRIGIDO if success else ReportStatus.FALHA_CORRECAO
+
+        if full_output.strip() and pr_url and pr_url not in full_output:
+            full_output += f"\n\n**PR:** {pr_url}"
+
+        try:
+            async with sessionmaker() as session:
+                obj = await session.get(Report, report_id)
+                if obj:
+                    obj.status = new_status
+                    obj.updated_at = datetime.now(UTC)
+                    if full_output.strip():
+                        obj.markdown = (obj.markdown or "") + "\n\n---\n\n" + full_output
+                    await session.commit()
+        except Exception:
+            logger.exception("Failed to persist GitOps fix result for report %s", report_id)
 
         yield _sse({"type": "status_update", "status": new_status, "success": success})
 

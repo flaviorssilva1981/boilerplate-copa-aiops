@@ -73,6 +73,11 @@ RBAC ClusterRole `aiops-dashboard-reader` grants the `aiops-app` service account
 | `MCP_AUTH_TOKEN` | Optional bearer token for MCP auth | (none) |
 | `BASIC_AUTH_USER` | Web UI username | `admin` |
 | `BASIC_AUTH_PASSWORD` | Web UI password | (required) |
+| `GITHUB_TOKEN` | GitHub PAT for GitOps fixes (injected from GitHub Secret `GITOPS_GITHUB_TOKEN`) | (optional) |
+| `GITOPS_REPO` | GitOps repository (`owner/repo`) | `flaviorssilva1981/guiadodevops` |
+| `GITOPS_WORK_BRANCH` | Branch to create fix branches from | `dev` |
+| `GITOPS_DEPLOY_BRANCH` | PR target / Argo CD sync branch | `main` |
+| `GITOPS_AUTO_MERGE` | Auto-merge PRs after creation (`true`/`false`) | `false` |
 
 ## Infrastructure (docker-compose — local only)
 

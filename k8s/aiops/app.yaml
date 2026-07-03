@@ -53,6 +53,20 @@ spec:
                 secretKeyRef:
                   name: aiops-secrets
                   key: BASIC_AUTH_PASSWORD
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-secrets
+                  key: GITHUB_TOKEN
+                  optional: true
+            - name: GITOPS_REPO
+              value: flaviorssilva1981/guiadodevops
+            - name: GITOPS_WORK_BRANCH
+              value: dev
+            - name: GITOPS_DEPLOY_BRANCH
+              value: main
+            - name: GITOPS_AUTO_MERGE
+              value: "false"
           readinessProbe:
             httpGet:
               path: /api/health
