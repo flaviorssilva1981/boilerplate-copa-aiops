@@ -51,7 +51,7 @@ async def health_page(request: Request):
                 {"status": str(r["status"]), "count": r["count"]} for r in report_stats
             ],
             "total_reports": sum(r["count"] for r in report_stats),
-            "model": os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-4-5"),
+            "model": os.environ.get("AGENT_MODEL_NAME", "google/gemini-2.5-pro"),
             "mcp_url": os.environ.get("MCP_SERVER_URL", "http://mcp-server-kubernetes:3001/mcp"),
             "now": datetime.now(UTC).strftime("%m/%d/%Y %H:%M UTC"),
         },

@@ -155,6 +155,12 @@ jobs:
             --type=merge \
             -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\",\"GITHUB_TOKEN\":\"${{ secrets.GITOPS_GITHUB_TOKEN }}\"}}"
 
+      - name: Sync LLM model env vars
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} set env deployment/${{ env.DEPLOYMENT }} \
+            AGENT_MODEL_NAME=google/gemini-2.5-pro \
+            ANTHROPIC_BASE_URL=https://router.requesty.ai/v1
+
       - name: Apply GitOps env vars to deployment
         run: |
           kubectl -n ${{ env.NAMESPACE }} patch deployment ${{ env.DEPLOYMENT }} \
@@ -164,8 +170,7 @@ jobs:
             deployment/${{ env.DEPLOYMENT }} \
             ${{ env.CONTAINER }}=${{ needs.build.outputs.image_tag }}
 
-      - name: Wait for rollout to complete
-        run: |
+      - name: Wait for rollout to complete        run: |
           kubectl -n ${{ env.NAMESPACE }} rollout status \
             deployment/${{ env.DEPLOYMENT }} \
             --timeout=300s
