@@ -170,7 +170,8 @@ jobs:
             deployment/${{ env.DEPLOYMENT }} \
             ${{ env.CONTAINER }}=${{ needs.build.outputs.image_tag }}
 
-      - name: Wait for rollout to complete        run: |
+      - name: Wait for rollout to complete
+        run: |
           kubectl -n ${{ env.NAMESPACE }} rollout status \
             deployment/${{ env.DEPLOYMENT }} \
             --timeout=300s
