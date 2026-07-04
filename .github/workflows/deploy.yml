@@ -19,6 +19,7 @@ env:
   NAMESPACE:  aiops
   DEPLOYMENT: aiops-agent-app
   CONTAINER:  app
+  SMOKE_URL:  https://aiops.dublinconsulting.com.br/api/health
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
@@ -186,13 +187,16 @@ jobs:
             -l app=${{ env.DEPLOYMENT }} \
             -o wide
 
-      - name: Smoke test (liveness probe)
+      - name: Smoke test (health endpoint)
         run: |
-          sleep 10
-          POD=$(kubectl -n ${{ env.NAMESPACE }} get pods \
-            -l app=${{ env.DEPLOYMENT }} \
-            -o jsonpath='{.items[0].metadata.name}')
-          kubectl -n ${{ env.NAMESPACE }} exec "${POD}" -- \
-            python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')" \
-            && echo "Health check passed" \
-            || echo "Health check failed (pod may still be starting)"
+          echo "Checking ${{ env.SMOKE_URL }}"
+          for i in $(seq 1 12); do
+            if curl -fsS "${{ env.SMOKE_URL }}" | grep -q '"status":"ok"'; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt ${i}/12 — waiting 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 2 minutes"
+          exit 1
