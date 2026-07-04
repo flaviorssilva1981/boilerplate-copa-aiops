@@ -155,17 +155,19 @@ jobs:
             --type=merge \
             -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\",\"GITHUB_TOKEN\":\"${{ secrets.GITOPS_GITHUB_TOKEN }}\"}}"
 
-      - name: Sync LLM model env vars
+      - name: Sync GitOps and LLM env vars
         run: |
+          # Use set env (not strategic merge on env[]) — merge patch wipes DATABASE_URL and secrets.
           kubectl -n ${{ env.NAMESPACE }} set env deployment/${{ env.DEPLOYMENT }} \
             AGENT_MODEL_NAME=google/gemini-2.5-pro \
-            ANTHROPIC_BASE_URL=https://router.requesty.ai/v1
+            ANTHROPIC_BASE_URL=https://router.requesty.ai/v1 \
+            GITOPS_REPO=flaviorssilva1981/guiadodevops \
+            GITOPS_WORK_BRANCH=dev \
+            GITOPS_DEPLOY_BRANCH=main \
+            GITOPS_AUTO_MERGE=false
 
-      - name: Apply GitOps env vars to deployment
+      - name: Update deployment image
         run: |
-          kubectl -n ${{ env.NAMESPACE }} patch deployment ${{ env.DEPLOYMENT }} \
-            --type=strategic \
-            -p '{"spec":{"template":{"spec":{"containers":[{"name":"${{ env.CONTAINER }}","env":[{"name":"GITHUB_TOKEN","valueFrom":{"secretKeyRef":{"name":"aiops-secrets","key":"GITHUB_TOKEN","optional":true}}},{"name":"GITOPS_REPO","value":"flaviorssilva1981/guiadodevops"},{"name":"GITOPS_WORK_BRANCH","value":"dev"},{"name":"GITOPS_DEPLOY_BRANCH","value":"main"},{"name":"GITOPS_AUTO_MERGE","value":"false"}]}]}}}}'
           kubectl -n ${{ env.NAMESPACE }} set image \
             deployment/${{ env.DEPLOYMENT }} \
             ${{ env.CONTAINER }}=${{ needs.build.outputs.image_tag }}
