@@ -8,7 +8,8 @@ ENV UV_LINK_MODE=copy
 COPY pyproject.toml README.md ./
 COPY src ./src
 
-RUN uv sync --frozen --no-dev --no-editable 2>/dev/null || uv sync --no-dev --no-editable
+ARG DEPS_HASH=unknown
+RUN echo "deps-hash=${DEPS_HASH}" && uv sync --no-dev --no-editable
 
 FROM python:3.12-slim-bookworm
 
