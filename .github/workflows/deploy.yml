@@ -112,9 +112,11 @@ jobs:
           tags: |
             ${{ steps.tag.outputs.image_tag }}
             ${{ env.IMAGE }}:latest
-          # Layer cache stored in GitHub Actions cache (free tier OK)
-          cache-from: type=gha
-          cache-to:   type=gha,mode=max
+          build-args: |
+            DEPS_HASH=${{ hashFiles('pyproject.toml') }}
+          # Scope cache to pyproject.toml — avoids stale .venv when deps change
+          cache-from: type=gha,scope=${{ hashFiles('pyproject.toml') }}
+          cache-to: type=gha,mode=max,scope=${{ hashFiles('pyproject.toml') }}
 
   # ── 4. Deploy to OKE ─────────────────────────────────────────
   deploy:
