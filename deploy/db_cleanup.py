@@ -12,13 +12,13 @@ async def main():
         result = await s.execute(
             text(
                 "DELETE FROM reports "
-                "WHERE status='INCOMPLETO' AND coalesce(markdown,'')='' "
+                "WHERE status='INCOMPLETE' AND coalesce(markdown,'')='' "
                 "RETURNING id"
             )
         )
         deleted = result.fetchall()
         await s.commit()
-        print(f"Deleted {len(deleted)} empty INCOMPLETO placeholder reports")
+        print(f"Deleted {len(deleted)} empty INCOMPLETE placeholder reports")
         r = await s.execute(
             text("SELECT status, COUNT(*) FROM reports GROUP BY status ORDER BY status")
         )
