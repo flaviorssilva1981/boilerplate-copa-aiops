@@ -35,7 +35,7 @@ spec:
             - name: ANTHROPIC_BASE_URL
               value: https://router.requesty.ai/v1
             - name: AGENT_MODEL_NAME
-              value: google/gemini-2.5-pro
+              value: anthropic/claude-sonnet-4-6
             - name: EVENT_COLLECTION_INTERVAL_MINUTES
               value: "3"
             - name: ANTHROPIC_API_KEY

@@ -67,7 +67,7 @@ RBAC ClusterRole `aiops-dashboard-reader` grants the `aiops-app` service account
 |----------|-------------|---------|
 | `ANTHROPIC_API_KEY` | Requesty AI key (Anthropic-compatible) | (required) |
 | `ANTHROPIC_BASE_URL` | LLM proxy base URL | `https://router.requesty.ai` |
-| `AGENT_MODEL_NAME` | Claude model slug | `anthropic/claude-sonnet-4-5` |
+| `AGENT_MODEL_NAME` | Claude model slug | `anthropic/claude-sonnet-4-6` |
 | `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://aiops:aiops123@localhost:5432/aiops_k8s` |
 | `MCP_SERVER_URL` | HTTP endpoint of the MCP Kubernetes server | `http://localhost:3001/mcp` |
 | `MCP_AUTH_TOKEN` | Optional bearer token for MCP auth | (none) |

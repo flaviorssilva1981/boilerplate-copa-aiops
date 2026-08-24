@@ -81,7 +81,7 @@ def config():
     return {
         "llm_provider": "requesty",
         "anthropic_base_url": os.environ.get("ANTHROPIC_BASE_URL", "https://router.requesty.ai/v1"),
-        "agent_model": os.environ.get("AGENT_MODEL_NAME", "google/gemini-2.5-pro"),
+        "agent_model": os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-4-6"),
         "mcp_server_url": os.environ.get("MCP_SERVER_URL"),
         "database_configured": bool(os.environ.get("DATABASE_URL")),
     }
@@ -208,6 +208,6 @@ async def agent_ping():
     response = await llm.ainvoke([HumanMessage(content="Reply with exactly: AIOps agent online.")])
     return {
         "status": "ok",
-        "model": os.environ.get("AGENT_MODEL_NAME", "google/gemini-2.5-pro"),
+        "model": os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-4-6"),
         "reply": response.content,
     }
