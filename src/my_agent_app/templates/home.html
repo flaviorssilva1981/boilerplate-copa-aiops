@@ -113,7 +113,7 @@
         <div class="arch-step">
             <div class="step-num">Step 2</div>
             <div class="step-title">Root Cause Analysis</div>
-            <div class="step-desc">The <strong>RCA Agent</strong> (LangChain + Gemini 2.5 Pro via Requesty AI) connects to the MCP Server and uses <code>kubectl get</code>, <code>describe</code>, and <code>logs</code> to investigate affected resources and write a structured diagnostic report.</div>
+            <div class="step-desc">The <strong>RCA Agent</strong> (LangChain + Claude Sonnet 4.6 via Requesty AI) connects to the MCP Server and uses <code>kubectl get</code>, <code>describe</code>, and <code>logs</code> to investigate affected resources and write a structured diagnostic report.</div>
         </div>
         <div class="arch-step">
             <div class="step-num">Step 3</div>
@@ -127,7 +127,7 @@
         </div>
     </div>
     <div class="arch-note">
-        <strong>Stack:</strong> FastAPI (API + Web UI) &nbsp;·&nbsp; LangChain + LangGraph (AI agents) &nbsp;·&nbsp; MCP Server Kubernetes (kubectl tools over HTTP) &nbsp;·&nbsp; Gemini 2.5 Pro via Requesty AI (LLM) &nbsp;·&nbsp; PostgreSQL (report storage) &nbsp;·&nbsp; Deployed on OKE (Oracle Kubernetes Engine)
+        <strong>Stack:</strong> FastAPI (API + Web UI) &nbsp;·&nbsp; LangChain + LangGraph (AI agents) &nbsp;·&nbsp; MCP Server Kubernetes (kubectl tools over HTTP) &nbsp;·&nbsp; Claude Sonnet 4.6 via Requesty AI (LLM) &nbsp;·&nbsp; PostgreSQL (report storage) &nbsp;·&nbsp; Deployed on OKE (Oracle Kubernetes Engine)
     </div>
 </div>
 {% endblock %}
