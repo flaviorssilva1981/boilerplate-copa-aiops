@@ -34,6 +34,7 @@ packages = ["src/my_agent_app"]
 line-length = 100
 target-version = "py312"
 src = ["src", "deploy"]
+exclude = ["docs", ".venv"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
