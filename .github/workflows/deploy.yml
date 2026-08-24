@@ -34,12 +34,18 @@ jobs:
       - name: Ruff lint
         uses: astral-sh/ruff-action@v3
         with:
-          args: check src deploy
+          args: check
+          src: >-
+            src
+            deploy
 
       - name: Ruff format check
         uses: astral-sh/ruff-action@v3
         with:
-          args: format --check src deploy
+          args: format --check
+          src: >-
+            src
+            deploy
 
   # ── 2. Security scan — secrets, SAST, dependencies (DevSecOps) ─
   security:
