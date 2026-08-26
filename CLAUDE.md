@@ -78,6 +78,9 @@ RBAC ClusterRole `aiops-dashboard-reader` grants the `aiops-app` service account
 | `GITOPS_WORK_BRANCH` | Branch to create fix branches from | `dev` |
 | `GITOPS_DEPLOY_BRANCH` | PR target / Argo CD sync branch | `main` |
 | `GITOPS_AUTO_MERGE` | Auto-merge PRs after creation (`true`/`false`) | `false` |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (from `@BotFather`) for report/fix notifications | (optional) |
+| `TELEGRAM_CHAT_ID` | Telegram chat ID to notify | (optional) |
+| `APP_BASE_URL` | Public base URL used to build report links in notifications | (optional) |
 
 ## Infrastructure (docker-compose — local only)
 

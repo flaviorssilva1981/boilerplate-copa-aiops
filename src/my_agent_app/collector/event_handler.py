@@ -12,6 +12,7 @@ from sqlalchemy.types import String
 
 from my_agent_app.agents.rca_agent import run_rca_analysis
 from my_agent_app.models import Report, ReportStatus
+from my_agent_app.notifications.telegram import notify_new_report
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,7 @@ class EventHandler:
             if placeholder_obj:
                 await session.delete(placeholder_obj)
 
+            created_reports: list[Report] = []
             for problem in problems:
                 md = problem.get("markdown", "").strip()
                 uids = problem.get("event_uids", [])
@@ -169,8 +171,13 @@ class EventHandler:
                     updated_at=datetime.now(UTC),
                 )
                 session.add(report)
+                created_reports.append(report)
 
             await session.commit()
+
+        for report in created_reports:
+            if report.status == ReportStatus.COMPLETO:
+                await notify_new_report(report)
 
         logger.info(
             "RCA complete: %s problem report(s) persisted for %s event(s)",

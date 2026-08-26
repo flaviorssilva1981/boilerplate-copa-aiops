@@ -67,6 +67,20 @@ spec:
               value: main
             - name: GITOPS_AUTO_MERGE
               value: "false"
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-secrets
+                  key: TELEGRAM_BOT_TOKEN
+                  optional: true
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aiops-secrets
+                  key: TELEGRAM_CHAT_ID
+                  optional: true
+            - name: APP_BASE_URL
+              value: https://aiops.dublinconsulting.com.br
           readinessProbe:
             httpGet:
               path: /api/health

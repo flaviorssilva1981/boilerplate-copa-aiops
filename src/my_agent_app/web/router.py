@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from my_agent_app.gitops.github_client import gitops_configured
 from my_agent_app.models import Report, ReportStatus
+from my_agent_app.notifications.telegram import notify_fix_outcome
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +140,7 @@ async def _run_fix_in_background(
         new_status = ReportStatus.CORRIGIDO if success else ReportStatus.FALHA_CORRECAO
         await _set_status(new_status, result_md)
         logger.info("Fix for report %s completed: %s", report_id, new_status)
+        await notify_fix_outcome(report_id, new_status)
     except Exception:
         logger.exception("Fix agent failed for report %s", report_id)
         await _set_status(
@@ -148,6 +150,7 @@ async def _run_fix_in_background(
                 "Internal error while running the fix agent. Check server logs."
             ),
         )
+        await notify_fix_outcome(report_id, ReportStatus.FALHA_CORRECAO)
 
 
 @router.get("/reports/{report_id}/fix/stream")
@@ -239,6 +242,7 @@ async def stream_fix_report(request: Request, report_id: uuid.UUID):
         except Exception:
             logger.exception("Failed to persist fix result for report %s", report_id)
 
+        await notify_fix_outcome(report_id, new_status)
         yield _sse({"type": "status_update", "status": new_status, "success": success})
 
     return StreamingResponse(_generate(), media_type="text/event-stream", headers=_sse_headers)
@@ -352,6 +356,7 @@ async def stream_gitops_fix_report(request: Request, report_id: uuid.UUID):
         except Exception:
             logger.exception("Failed to persist GitOps fix result for report %s", report_id)
 
+        await notify_fix_outcome(report_id, new_status)
         yield _sse({"type": "status_update", "status": new_status, "success": success})
 
     return StreamingResponse(_generate(), media_type="text/event-stream", headers=_sse_headers)
