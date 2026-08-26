@@ -38,6 +38,13 @@ Your task is to EXECUTE the suggested fixes using the available tools.
   sections of the report.
 - Do not invent fixes not documented in the report.
 - After executing each command, verify the result with kubectl_get or kubectl_describe.
+- When using kubectl_patch on a field inside a list such as
+  spec.template.spec.containers[], use patchType="strategic" (or omit patchType)
+  so the patch merges into the existing element by its name key. Only use
+  patchType="merge" (JSON Merge Patch) if the patch includes every existing
+  field of that object — under merge semantics a partial list element replaces
+  the whole list wholesale and will fail required-field validation (e.g.
+  dropping "image" or leaving "readinessProbe" without a handler).
 - If a command fails, try the alternative suggested in the report.
 - Do not execute kubectl_delete on critical resources (nodes, system namespaces, PVs)
   without explicit confirmation.
