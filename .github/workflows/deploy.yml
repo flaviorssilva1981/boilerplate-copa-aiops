@@ -168,8 +168,8 @@ jobs:
         run: |
           # Use set env (not strategic merge on env[]) — merge patch wipes DATABASE_URL and secrets.
           kubectl -n ${{ env.NAMESPACE }} set env deployment/${{ env.DEPLOYMENT }} \
-            AGENT_MODEL_NAME=anthropic/claude-sonnet-4-6 \
-            ANTHROPIC_BASE_URL=https://router.requesty.ai/v1 \
+            AGENT_MODEL_NAME=claude-sonnet-5 \
+            ANTHROPIC_BASE_URL=https://api.anthropic.com \
             GITOPS_REPO=flaviorssilva1981/guiadodevops \
             GITOPS_WORK_BRANCH=dev \
             GITOPS_DEPLOY_BRANCH=main \

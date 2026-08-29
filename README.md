@@ -47,7 +47,7 @@ Kubernetes Cluster
 | Step | What happens |
 |------|-------------|
 | **1. Collect** | The `Collector` polls Kubernetes warning events every 3 minutes. New events not already covered by a report are grouped and forwarded to the RCA agent. |
-| **2. Diagnose** | The `RCA Agent` (LangChain ReAct + Claude Sonnet via Requesty AI) investigates each event group using read-only MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`). It writes a structured Markdown report with root cause, severity, affected resources, and suggested fixes. |
+| **2. Diagnose** | The `RCA Agent` (LangChain ReAct + Claude Sonnet 5 via the native Anthropic API) investigates each event group using read-only MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`). It writes a structured Markdown report with root cause, severity, affected resources, and suggested fixes. |
 | **3. Persist** | The Markdown report is saved to PostgreSQL with status `ANALYZING → COMPLETE`. Reports are deduplicated by event UID to prevent repeated analysis. |
 | **4. Remediate** | The operator clicks **Execute Fix** in the web UI. The `Fix Agent` (LangChain + Claude Sonnet) reads the report and executes the suggested remediation commands via MCP (`kubectl_apply`, `kubectl_patch`, `kubectl_rollout`, etc.), streaming each step in real time to a terminal-like modal. The report status is updated to `FIXED` or `FIX_FAILED`. |
 
@@ -65,7 +65,7 @@ Kubernetes Cluster
 ### Agents
 - **RCA Agent** — read-only investigation using `kubectl_get`, `kubectl_describe`, `kubectl_logs`
 - **Fix Agent** — remediation using `kubectl_apply`, `kubectl_patch`, `kubectl_delete`, `kubectl_scale`, `kubectl_rollout`, and more
-- Both agents use **LangChain `create_agent`** (ReAct pattern) with **Claude Sonnet** via **Requesty AI**
+- Both agents use **LangChain `create_agent`** (ReAct pattern) with **Claude Sonnet 5** via the **native Anthropic API**
 
 ### Security
 - **HTTP Basic Authentication** (configurable via environment variables) on all web routes
@@ -87,7 +87,7 @@ Kubernetes Cluster
 |-----------|------|
 | **FastAPI + Uvicorn** | Async HTTP backend |
 | **LangChain 1.x** | ReAct agent framework (`create_agent`) |
-| **Claude Sonnet 4.5** | LLM via Requesty AI (Anthropic proxy) |
+| **Claude Sonnet 5** | LLM via the native Anthropic API (`langchain-anthropic`) |
 | **MCP Server** (`npx mcp-server-kubernetes`) | `kubectl` tool server over HTTP/SSE |
 | **`langchain-mcp-adapters`** | Bridges LangChain tools ↔ MCP protocol |
 | **PostgreSQL 17 + asyncpg** | Report persistence |
@@ -154,7 +154,7 @@ Kubernetes Cluster
     │   └── architecture.jpg       # Architecture diagram shown on home page
     │
     ├── agents/
-    │   ├── llm.py                 # ChatAnthropic factory (Requesty AI)
+    │   ├── llm.py                 # ChatAnthropic factory (native Anthropic API)
     │   ├── rca_agent.py           # RCA agent: diagnose events, write Markdown reports
     │   └── fix_agent.py           # Fix agent: execute kubectl commands + SSE streaming
     │
@@ -172,9 +172,9 @@ Kubernetes Cluster
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Requesty AI key (Anthropic-compatible) | *(required)* |
-| `ANTHROPIC_BASE_URL` | LLM proxy base URL | `https://router.requesty.ai` |
-| `AGENT_MODEL_NAME` | Claude model slug | `anthropic/claude-sonnet-4-6` |
+| `ANTHROPIC_API_KEY` | Anthropic API key (`sk-ant-…`) | *(required)* |
+| `ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
+| `AGENT_MODEL_NAME` | Claude model ID | `claude-sonnet-5` |
 | `DATABASE_URL` | Async PostgreSQL connection string | *(set in `.env` — see `.env.example`)* |
 | `MCP_SERVER_URL` | HTTP endpoint of the MCP Kubernetes server | `http://localhost:3001/mcp` |
 | `MCP_AUTH_TOKEN` | Optional bearer token for MCP server auth | *(none)* |
@@ -348,7 +348,7 @@ This means **no passwords are ever stored in git**. Rotating a credential is a s
 The `deploy/oke-deploy.ps1` script (PowerShell) creates all Kubernetes Secrets and rolls out all manifests from scratch:
 
 ```powershell
-$env:ANTHROPIC_API_KEY   = "<your-requesty-key>"
+$env:ANTHROPIC_API_KEY   = "<your-anthropic-api-key>"
 $env:BASIC_AUTH_PASSWORD = "<your-web-ui-password>"
 $env:POSTGRES_PASSWORD   = "<your-db-password>"
 .\deploy\oke-deploy.ps1
