@@ -11,7 +11,7 @@ kubectl_cmd() {
 }
 
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-  echo "ERROR: set ANTHROPIC_API_KEY (Requesty key) before running this script."
+  echo "ERROR: set ANTHROPIC_API_KEY (Anthropic API key) before running this script."
   exit 1
 fi
 

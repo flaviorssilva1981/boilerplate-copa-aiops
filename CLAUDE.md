@@ -2,7 +2,7 @@
 
 ## About this project
 
-Kubernetes AIOps agent — automatically detects, diagnoses, and remediates Kubernetes problems using FastAPI, LangChain (ReAct), Claude Sonnet via Requesty AI, and a live MCP Kubernetes server.
+Kubernetes AIOps agent — automatically detects, diagnoses, and remediates Kubernetes problems using FastAPI, LangChain (ReAct), Claude Sonnet 5 via the native Anthropic API, and a live MCP Kubernetes server.
 
 ## Commands
 
@@ -65,9 +65,10 @@ RBAC ClusterRole `aiops-dashboard-reader` grants the `aiops-app` service account
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Requesty AI key (Anthropic-compatible) | (required) |
-| `ANTHROPIC_BASE_URL` | LLM proxy base URL | `https://router.requesty.ai` |
-| `AGENT_MODEL_NAME` | Claude model slug | `anthropic/claude-sonnet-4-6` |
+| `ANTHROPIC_API_KEY` | Anthropic API key (`sk-ant-…`) | (required) |
+| `ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
+| `AGENT_MODEL_NAME` | Claude model ID | `claude-sonnet-5` |
+| `AGENT_MAX_TOKENS` | Max output tokens per agent LLM call | `8192` |
 | `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://aiops:aiops123@localhost:5432/aiops_k8s` |
 | `MCP_SERVER_URL` | HTTP endpoint of the MCP Kubernetes server | `http://localhost:3001/mcp` |
 | `MCP_AUTH_TOKEN` | Optional bearer token for MCP auth | (none) |

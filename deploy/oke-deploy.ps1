@@ -1,6 +1,6 @@
 # Deploy the AIOps stack to OKE from Windows PowerShell.
 # Usage:
-#   $env:ANTHROPIC_API_KEY = "<your-requesty-key>"
+#   $env:ANTHROPIC_API_KEY = "<your-anthropic-api-key>"
 #   $env:BASIC_AUTH_PASSWORD = "<your-web-ui-password>"
 #   $env:POSTGRES_PASSWORD   = "<your-db-password>"  # optional, defaults to aiops123
 #   .\deploy\oke-deploy.ps1
@@ -19,7 +19,7 @@ function Invoke-Kubectl {
 }
 
 if (-not $env:ANTHROPIC_API_KEY) {
-    throw "Set ANTHROPIC_API_KEY (Requesty key) before running this script."
+    throw "Set ANTHROPIC_API_KEY (Anthropic API key) before running this script."
 }
 if (-not $env:BASIC_AUTH_PASSWORD) {
     throw "Set BASIC_AUTH_PASSWORD before running this script."

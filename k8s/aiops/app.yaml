@@ -33,9 +33,9 @@ spec:
             - name: MCP_SERVER_URL
               value: http://mcp-server-kubernetes:3001/mcp
             - name: ANTHROPIC_BASE_URL
-              value: https://router.requesty.ai/v1
+              value: https://api.anthropic.com
             - name: AGENT_MODEL_NAME
-              value: anthropic/claude-sonnet-4-6
+              value: claude-sonnet-5
             - name: EVENT_COLLECTION_INTERVAL_MINUTES
               value: "3"
             - name: ANTHROPIC_API_KEY
