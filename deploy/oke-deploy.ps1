@@ -1,6 +1,6 @@
 # Deploy the AIOps stack to OKE from Windows PowerShell.
 # Usage:
-#   $env:ANTHROPIC_API_KEY = "<your-anthropic-api-key>"
+#   $env:REQUESTY_API_KEY = "<your-requesty-gateway-key>"
 #   $env:BASIC_AUTH_PASSWORD = "<your-web-ui-password>"
 #   $env:POSTGRES_PASSWORD   = "<your-db-password>"  # optional, defaults to aiops123
 #   .\deploy\oke-deploy.ps1
@@ -18,8 +18,8 @@ function Invoke-Kubectl {
     if ($LASTEXITCODE -ne 0) { throw "kubectl failed: $Args" }
 }
 
-if (-not $env:ANTHROPIC_API_KEY) {
-    throw "Set ANTHROPIC_API_KEY (Anthropic API key) before running this script."
+if (-not $env:REQUESTY_API_KEY) {
+    throw "Set REQUESTY_API_KEY (Requesty gateway key) before running this script."
 }
 if (-not $env:BASIC_AUTH_PASSWORD) {
     throw "Set BASIC_AUTH_PASSWORD before running this script."
@@ -49,7 +49,7 @@ kubectl --kubeconfig $KubeConfig --context $Context -n $Namespace create secret 
 Write-Host "==> Creating/updating aiops-secrets"
 $DatabaseUrl = "postgresql+asyncpg://aiops:${PostgresPassword}@postgres:5432/aiops_k8s"
 kubectl --kubeconfig $KubeConfig --context $Context -n $Namespace create secret generic aiops-secrets `
-    --from-literal=ANTHROPIC_API_KEY=$env:ANTHROPIC_API_KEY `
+    --from-literal=REQUESTY_API_KEY=$env:REQUESTY_API_KEY `
     --from-literal=MCP_AUTH_TOKEN=$McpToken `
     --from-literal=BASIC_AUTH_USER=$BasicAuthUser `
     --from-literal=BASIC_AUTH_PASSWORD=$env:BASIC_AUTH_PASSWORD `
