@@ -10,8 +10,8 @@ kubectl_cmd() {
   kubectl --kubeconfig "$KUBECONFIG_PATH" --context "$CONTEXT" "$@"
 }
 
-if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-  echo "ERROR: set ANTHROPIC_API_KEY (Anthropic API key) before running this script."
+if [[ -z "${REQUESTY_API_KEY:-}" ]]; then
+  echo "ERROR: set REQUESTY_API_KEY (Requesty gateway key) before running this script."
   exit 1
 fi
 
@@ -33,7 +33,7 @@ kubectl_cmd apply -f "$ROOT_DIR/k8s/aiops/postgres.yaml"
 
 echo "==> Creating/updating aiops-secrets"
 kubectl_cmd -n "$NAMESPACE" create secret generic aiops-secrets \
-  --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+  --from-literal=REQUESTY_API_KEY="$REQUESTY_API_KEY" \
   --from-literal=MCP_AUTH_TOKEN="$MCP_AUTH_TOKEN" \
   --dry-run=client -o yaml | kubectl_cmd apply -f -
 

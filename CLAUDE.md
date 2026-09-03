@@ -2,7 +2,7 @@
 
 ## About this project
 
-Kubernetes AIOps agent — automatically detects, diagnoses, and remediates Kubernetes problems using FastAPI, LangChain (ReAct), Claude Sonnet 5 via the native Anthropic API, and a live MCP Kubernetes server.
+Kubernetes AIOps agent — automatically detects, diagnoses, and remediates Kubernetes problems using FastAPI, LangChain (ReAct), Claude Sonnet 5 via the Requesty AI gateway, and a live MCP Kubernetes server.
 
 ## Commands
 
@@ -20,7 +20,7 @@ docker compose up -d
 # Requires Node.js/npx and a valid kubeconfig at ~/.kube/config
 ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT=1 PORT=3001 npx mcp-server-kubernetes
 
-# Deploy to OKE (set ANTHROPIC_API_KEY first)
+# Deploy to OKE (set REQUESTY_API_KEY first)
 .\deploy\oke-deploy.ps1
 ```
 
@@ -65,9 +65,9 @@ RBAC ClusterRole `aiops-dashboard-reader` grants the `aiops-app` service account
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Anthropic API key (`sk-ant-…`) | (required) |
-| `ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
-| `AGENT_MODEL_NAME` | Claude model ID | `claude-sonnet-5` |
+| `REQUESTY_API_KEY` | Requesty AI gateway key (`rqsty-sk-…`) | (required) |
+| `REQUESTY_BASE_URL` | Requesty gateway base URL (OpenAI-compatible) | `https://router.requesty.ai/v1` |
+| `AGENT_MODEL_NAME` | Requesty model slug | `anthropic/claude-sonnet-5` |
 | `AGENT_MAX_TOKENS` | Max output tokens per agent LLM call | `8192` |
 | `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://aiops:aiops123@localhost:5432/aiops_k8s` |
 | `MCP_SERVER_URL` | HTTP endpoint of the MCP Kubernetes server | `http://localhost:3001/mcp` |

@@ -32,17 +32,17 @@ spec:
                   key: DATABASE_URL
             - name: MCP_SERVER_URL
               value: http://mcp-server-kubernetes:3001/mcp
-            - name: ANTHROPIC_BASE_URL
-              value: https://api.anthropic.com
+            - name: REQUESTY_BASE_URL
+              value: https://router.requesty.ai/v1
             - name: AGENT_MODEL_NAME
-              value: claude-sonnet-5
+              value: anthropic/claude-sonnet-5
             - name: EVENT_COLLECTION_INTERVAL_MINUTES
               value: "3"
-            - name: ANTHROPIC_API_KEY
+            - name: REQUESTY_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: aiops-secrets
-                  key: ANTHROPIC_API_KEY
+                  key: REQUESTY_API_KEY
             - name: BASIC_AUTH_USER
               valueFrom:
                 secretKeyRef:
