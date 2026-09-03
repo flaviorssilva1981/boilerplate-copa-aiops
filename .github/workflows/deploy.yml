@@ -159,10 +159,11 @@ jobs:
             --from-literal=POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
             --from-literal=POSTGRES_DB=aiops_k8s \
             --dry-run=client -o yaml | kubectl apply -f -
-          # Patch DATABASE_URL, BASIC_AUTH_USER and BASIC_AUTH_PASSWORD into aiops-secrets
+          # Patch DATABASE_URL, BASIC_AUTH_USER, BASIC_AUTH_PASSWORD, GITHUB_TOKEN and the
+          # Requesty gateway key into aiops-secrets
           kubectl -n ${{ env.NAMESPACE }} patch secret aiops-secrets \
             --type=merge \
-            -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\",\"GITHUB_TOKEN\":\"${{ secrets.GITOPS_GITHUB_TOKEN }}\"}}"
+            -p "{\"stringData\":{\"DATABASE_URL\":\"${DB_URL}\",\"BASIC_AUTH_USER\":\"${{ secrets.BASIC_AUTH_USER }}\",\"BASIC_AUTH_PASSWORD\":\"${{ secrets.BASIC_AUTH_PASSWORD }}\",\"GITHUB_TOKEN\":\"${{ secrets.GITOPS_GITHUB_TOKEN }}\",\"REQUESTY_API_KEY\":\"${{ secrets.REQUESTY_API_KEY }}\"}}"
 
       - name: Sync GitOps and LLM env vars
         run: |
@@ -174,6 +175,11 @@ jobs:
             GITOPS_WORK_BRANCH=dev \
             GITOPS_DEPLOY_BRANCH=main \
             GITOPS_AUTO_MERGE=false
+          # Wire REQUESTY_API_KEY from the secret and drop the retired Anthropic-native vars
+          kubectl -n ${{ env.NAMESPACE }} set env deployment/${{ env.DEPLOYMENT }} \
+            --from=secret/aiops-secrets --keys=REQUESTY_API_KEY
+          kubectl -n ${{ env.NAMESPACE }} set env deployment/${{ env.DEPLOYMENT }} \
+            ANTHROPIC_API_KEY- ANTHROPIC_BASE_URL-
 
       - name: Update deployment image
         run: |
