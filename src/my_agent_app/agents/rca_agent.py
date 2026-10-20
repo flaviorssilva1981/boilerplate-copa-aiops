@@ -1,4 +1,4 @@
-"""RCA agent: LangChain create_agent + Claude Sonnet + MCP Kubernetes (read-only)."""
+"""RCA agent: LangChain create_agent + GPT-5 + MCP Kubernetes (read-only)."""
 
 import asyncio
 import json

@@ -1,4 +1,4 @@
-"""LLM configuration for LangChain agents via the Requesty AI gateway."""
+"""LLM configuration for LangChain agents via the OpenAI API (GPT-5)."""
 
 import os
 
@@ -16,11 +16,11 @@ def _get_max_tokens() -> int:
 
 
 def get_agent_llm() -> BaseChatModel:
-    """Return the agent LLM (Requesty OpenAI-compatible gateway, any provider model)."""
+    """Return the agent LLM (OpenAI API; base URL overridable for compatible gateways)."""
     return ChatOpenAI(
-        model=os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-5"),
-        api_key=os.environ["REQUESTY_API_KEY"],
-        base_url=os.environ.get("REQUESTY_BASE_URL", "https://router.requesty.ai/v1"),
+        model=os.environ.get("AGENT_MODEL_NAME", "gpt-5"),
+        api_key=os.environ["OPENAI_API_KEY"],
+        base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         max_tokens=_get_max_tokens(),
         max_retries=3,
         timeout=120,

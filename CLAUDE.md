@@ -2,7 +2,7 @@
 
 ## About this project
 
-Kubernetes AIOps agent — automatically detects, diagnoses, and remediates Kubernetes problems using FastAPI, LangChain (ReAct), Claude Sonnet 5 via the Requesty AI gateway, and a live MCP Kubernetes server.
+Kubernetes AIOps agent — automatically detects, diagnoses, and remediates Kubernetes problems using FastAPI, LangChain (ReAct), GPT-5 via the OpenAI API, and a live MCP Kubernetes server.
 
 ## Commands
 
@@ -20,7 +20,7 @@ docker compose up -d
 # Requires Node.js/npx and a valid kubeconfig at ~/.kube/config
 ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT=1 PORT=3001 npx mcp-server-kubernetes
 
-# Deploy to OKE (set REQUESTY_API_KEY first)
+# Deploy to OKE (set OPENAI_API_KEY first)
 .\deploy\oke-deploy.ps1
 ```
 
@@ -36,7 +36,7 @@ Code lives in `src/my_agent_app/` and is packaged via hatchling (`pyproject.toml
 ### AIOps loop (4 steps)
 
 1. **Collect** — `collector/collector.py` polls Kubernetes warning events every 3 minutes via the in-cluster API. New events not already covered by a report are grouped and sent to the RCA agent.
-2. **Diagnose** — `agents/rca_agent.py` (LangChain ReAct + Claude Sonnet) investigates events using read-only MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`). Writes a structured Markdown report.
+2. **Diagnose** — `agents/rca_agent.py` (LangChain ReAct + GPT-5) investigates events using read-only MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`). Writes a structured Markdown report.
 3. **Persist** — report saved to PostgreSQL (`models/report.py`) with status `ANALYZING → COMPLETE`. Events are deduplicated by UID.
 4. **Remediate** — operator clicks "Execute Fix" in the web UI. `agents/fix_agent.py` reads the report and executes fixes via MCP (`kubectl_apply`, `kubectl_patch`, etc.), streaming each step live to the browser via Server-Sent Events.
 
@@ -65,9 +65,9 @@ RBAC ClusterRole `aiops-dashboard-reader` grants the `aiops-app` service account
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `REQUESTY_API_KEY` | Requesty AI gateway key (`rqsty-sk-…`) | (required) |
-| `REQUESTY_BASE_URL` | Requesty gateway base URL (OpenAI-compatible) | `https://router.requesty.ai/v1` |
-| `AGENT_MODEL_NAME` | Requesty model slug | `anthropic/claude-sonnet-5` |
+| `OPENAI_API_KEY` | OpenAI API key (`sk-proj-…`) | (required) |
+| `OPENAI_BASE_URL` | OpenAI API base URL (override for compatible gateways) | `https://api.openai.com/v1` |
+| `AGENT_MODEL_NAME` | OpenAI model name | `gpt-5` |
 | `AGENT_MAX_TOKENS` | Max output tokens per agent LLM call | `8192` |
 | `DATABASE_URL` | Async PostgreSQL connection string | `postgresql+asyncpg://aiops:aiops123@localhost:5432/aiops_k8s` |
 | `MCP_SERVER_URL` | HTTP endpoint of the MCP Kubernetes server | `http://localhost:3001/mcp` |
