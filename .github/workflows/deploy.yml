@@ -120,10 +120,10 @@ jobs:
             ${{ steps.tag.outputs.image_tag }}
             ${{ env.IMAGE }}:latest
           build-args: |
-            DEPS_HASH=${{ hashFiles('pyproject.toml') }}
+            DEPS_HASH=${{ hashFiles('pyproject.toml', 'uv.lock') }}
           # Scope cache to pyproject.toml — avoids stale .venv when deps change
-          cache-from: type=gha,scope=${{ hashFiles('pyproject.toml') }}
-          cache-to: type=gha,mode=max,scope=${{ hashFiles('pyproject.toml') }}
+          cache-from: type=gha,scope=${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          cache-to: type=gha,mode=max,scope=${{ hashFiles('pyproject.toml', 'uv.lock') }}
 
   # ── 4. Deploy to OKE ─────────────────────────────────────────
   deploy:

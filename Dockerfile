@@ -5,11 +5,11 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 
 ARG DEPS_HASH=unknown
-RUN echo "deps-hash=${DEPS_HASH}" && uv sync --no-dev --no-editable
+RUN echo "deps-hash=${DEPS_HASH}" && uv sync --frozen --no-dev --no-editable
 
 FROM python:3.12-slim-bookworm
 
