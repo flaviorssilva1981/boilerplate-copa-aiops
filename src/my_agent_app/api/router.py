@@ -79,9 +79,9 @@ def health():
 @router.get("/api/config")
 def config():
     return {
-        "llm_provider": "requesty",
-        "requesty_base_url": os.environ.get("REQUESTY_BASE_URL", "https://router.requesty.ai/v1"),
-        "agent_model": os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-5"),
+        "llm_provider": "openai",
+        "openai_base_url": os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        "agent_model": os.environ.get("AGENT_MODEL_NAME", "gpt-5"),
         "mcp_server_url": os.environ.get("MCP_SERVER_URL"),
         "database_configured": bool(os.environ.get("DATABASE_URL")),
     }
@@ -201,13 +201,13 @@ async def cluster_metrics():
 
 @router.post("/api/agent/ping")
 async def agent_ping():
-    if not os.environ.get("REQUESTY_API_KEY"):
-        raise HTTPException(status_code=503, detail="REQUESTY_API_KEY is not configured")
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is not configured")
 
     llm = get_agent_llm()
     response = await llm.ainvoke([HumanMessage(content="Reply with exactly: AIOps agent online.")])
     return {
         "status": "ok",
-        "model": os.environ.get("AGENT_MODEL_NAME", "anthropic/claude-sonnet-5"),
+        "model": os.environ.get("AGENT_MODEL_NAME", "gpt-5"),
         "reply": response.content,
     }

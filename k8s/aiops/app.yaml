@@ -32,17 +32,17 @@ spec:
                   key: DATABASE_URL
             - name: MCP_SERVER_URL
               value: http://mcp-server-kubernetes:3001/mcp
-            - name: REQUESTY_BASE_URL
-              value: https://router.requesty.ai/v1
+            - name: OPENAI_BASE_URL
+              value: https://api.openai.com/v1
             - name: AGENT_MODEL_NAME
-              value: anthropic/claude-sonnet-5
+              value: gpt-5
             - name: EVENT_COLLECTION_INTERVAL_MINUTES
               value: "3"
-            - name: REQUESTY_API_KEY
+            - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: aiops-secrets
-                  key: REQUESTY_API_KEY
+                  key: OPENAI_API_KEY
             - name: BASIC_AUTH_USER
               valueFrom:
                 secretKeyRef:

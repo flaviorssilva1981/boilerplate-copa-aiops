@@ -186,7 +186,7 @@ async def stream_fix_execution(report_markdown: str) -> AsyncGenerator[dict, Non
         )
     ]
 
-    yield {"type": "info", "content": "Sending report to Fix Agent (LangChain + Claude Sonnet) …"}
+    yield {"type": "info", "content": "Sending report to Fix Agent (LangChain + GPT-5) …"}
 
     ai_parts: list[str] = []
 

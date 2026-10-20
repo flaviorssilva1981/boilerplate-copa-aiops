@@ -10,8 +10,8 @@ kubectl_cmd() {
   kubectl --kubeconfig "$KUBECONFIG_PATH" --context "$CONTEXT" "$@"
 }
 
-if [[ -z "${REQUESTY_API_KEY:-}" ]]; then
-  echo "ERROR: set REQUESTY_API_KEY (Requesty gateway key) before running this script."
+if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+  echo "ERROR: set OPENAI_API_KEY (OpenAI API key) before running this script."
   exit 1
 fi
 
@@ -33,7 +33,7 @@ kubectl_cmd apply -f "$ROOT_DIR/k8s/aiops/postgres.yaml"
 
 echo "==> Creating/updating aiops-secrets"
 kubectl_cmd -n "$NAMESPACE" create secret generic aiops-secrets \
-  --from-literal=REQUESTY_API_KEY="$REQUESTY_API_KEY" \
+  --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY" \
   --from-literal=MCP_AUTH_TOKEN="$MCP_AUTH_TOKEN" \
   --dry-run=client -o yaml | kubectl_cmd apply -f -
 
